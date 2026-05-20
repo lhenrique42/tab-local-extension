@@ -21,6 +21,7 @@
   },
   "include": [
     ".wxt/types/**/*.d.ts",
+    "types/**/*.d.ts",
     "entrypoints/**/*",
     "components/**/*",
     "composables/**/*",

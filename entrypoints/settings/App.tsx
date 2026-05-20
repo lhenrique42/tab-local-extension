@@ -1,4 +1,7 @@
+import { useTheme } from '../../composables/useTheme';
+
 export default function App() {
+  useTheme();
   return (
     <div>
       <h1>TabLocal — Settings</h1>

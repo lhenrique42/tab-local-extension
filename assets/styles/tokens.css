@@ -1,0 +1,214 @@
+/* =============================================================================
+   TabLocal Design Tokens
+   Extracted from the TabLocal design system kit (colors_and_type.css).
+   Fonts are loaded via @fontsource packages in entrypoint JS, not here.
+   ============================================================================= */
+
+:root {
+  /* ── Base color scale — Ink (dark-mode neutral) ── */
+  --ink-0:  #07090C;
+  --ink-1:  #0B0D11;
+  --ink-2:  #14171D;
+  --ink-3:  #1C2028;
+  --ink-4:  #262B34;
+  --ink-5:  #353B46;
+  --ink-6:  #4B525E;
+  --ink-7:  #6A7280;
+  --ink-8:  #9AA0AB;
+  --ink-9:  #C8CCD3;
+  --ink-10: #ECEEF2;
+  --ink-11: #FFFFFF;
+
+  /* ── Base color scale — Paper (light-mode neutral) ── */
+  --paper-0:  #FFFFFF;
+  --paper-1:  #FAFAF7;
+  --paper-2:  #F2F1EB;
+  --paper-3:  #E8E7DF;
+  --paper-4:  #DCDBD2;
+  --paper-5:  #C7C5BA;
+  --paper-6:  #9E9C92;
+  --paper-7:  #6E6C63;
+  --paper-8:  #4A4842;
+  --paper-9:  #2A2925;
+  --paper-10: #0F0E0C;
+
+  /* ── Accent — citrus chartreuse ── */
+  --citrus-100: #F0FAD0;
+  --citrus-200: #E0F299;
+  --citrus-300: #D2EC78;
+  --citrus-400: #C7F25C;
+  --citrus-500: #B5E040;
+  --citrus-600: #9AC52B;
+  --citrus-700: #759920;
+
+  /* ── Chrome tab-group palette ── */
+  --tg-grey:   #9AA0A6;
+  --tg-blue:   #4A90E2;
+  --tg-red:    #E25C5C;
+  --tg-yellow: #F5C242;
+  --tg-green:  #5CB87E;
+  --tg-pink:   #E26AA5;
+  --tg-purple: #9B6BE2;
+  --tg-cyan:   #4DBDBD;
+  --tg-orange: #E89A4A;
+
+  /* ── Status ── */
+  --status-success: #5CB87E;
+  --status-warning: #F5C242;
+  --status-danger:  #E25C5C;
+  --status-info:    #4A90E2;
+
+  /* ── Theme bindings — DARK (default) ── */
+  --bg:             var(--ink-1);
+  --bg-elevated:    var(--ink-0);
+  --surface:        var(--ink-2);
+  --surface-raised: var(--ink-3);
+  --surface-higher: var(--ink-4);
+
+  --fg:             var(--ink-10);
+  --fg-secondary:   var(--ink-8);
+  --fg-tertiary:    var(--ink-6);
+  --fg-muted:       var(--ink-7);
+  --fg-on-accent:   #0B0D11;
+
+  --border:         var(--ink-5);
+  --border-subtle:  rgba(255, 255, 255, 0.06);
+  --border-strong:  var(--ink-6);
+
+  --accent:         var(--citrus-400);
+  --accent-hover:   var(--citrus-300);
+  --accent-press:   var(--citrus-500);
+  --accent-soft:    rgba(199, 242, 92, 0.12);
+  --accent-soft-2:  rgba(199, 242, 92, 0.20);
+
+  --focus-ring:     var(--citrus-400);
+
+  --shadow-popover: 0 12px 32px -8px rgba(0, 0, 0, 0.55), 0 2px 6px -2px rgba(0, 0, 0, 0.4);
+  --shadow-drag:    0 6px 16px -4px rgba(0, 0, 0, 0.55);
+
+  --dot-grid: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.04) 1px, transparent 0);
+
+  /* ── Spacing scale (4px base) ── */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-7:  32px;
+  --space-8:  40px;
+  --space-9:  56px;
+  --space-10: 72px;
+
+  /* ── Radii ── */
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+
+  /* ── Motion ── */
+  --ease-out:    cubic-bezier(0.2, 0, 0, 1);
+  --ease-in:     cubic-bezier(0.4, 0, 1, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur-fast:  80ms;
+  --dur-base:  120ms;
+  --dur-slow:  220ms;
+
+  /* ── Typography ── */
+  --font-sans: 'Geist', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  --text-2xs: 11px;
+  --text-xs:  12px;
+  --text-sm:  13px;
+  --text-md:  14px;
+  --text-lg:  16px;
+  --text-xl:  20px;
+  --text-2xl: 26px;
+  --text-3xl: 34px;
+  --text-4xl: 44px;
+
+  --leading-tight:  1.15;
+  --leading-snug:   1.3;
+  --leading-normal: 1.5;
+
+  --weight-regular:  400;
+  --weight-medium:   500;
+  --weight-semibold: 600;
+  --weight-bold:     700;
+
+  --tracking-tight:  -0.015em;
+  --tracking-normal: 0;
+  --tracking-wide:   0.02em;
+  --tracking-caps:   0.08em;
+}
+
+/* ── Light theme override ── */
+[data-theme="light"] {
+  --bg:             var(--paper-1);
+  --bg-elevated:    var(--paper-0);
+  --surface:        var(--paper-2);
+  --surface-raised: var(--paper-3);
+  --surface-higher: var(--paper-4);
+
+  --fg:             var(--paper-9);
+  --fg-secondary:   var(--paper-8);
+  --fg-tertiary:    var(--paper-7);
+  --fg-muted:       var(--paper-6);
+  --fg-on-accent:   #1A1F0A;
+
+  --border:         var(--paper-5);
+  --border-subtle:  rgba(0, 0, 0, 0.06);
+  --border-strong:  var(--paper-6);
+
+  --accent:         var(--citrus-600);
+  --accent-hover:   var(--citrus-500);
+  --accent-press:   var(--citrus-700);
+  --accent-soft:    rgba(154, 197, 43, 0.14);
+  --accent-soft-2:  rgba(154, 197, 43, 0.22);
+
+  --shadow-popover: 0 12px 32px -8px rgba(0, 0, 0, 0.18), 0 2px 6px -2px rgba(0, 0, 0, 0.08);
+  --shadow-drag:    0 6px 16px -4px rgba(0, 0, 0, 0.22);
+
+  --dot-grid: radial-gradient(circle at 1px 1px, rgba(0,0,0,0.06) 1px, transparent 0);
+}
+
+/* ── Global base styles ── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body { margin: 0; padding: 0; height: 100%; }
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  line-height: var(--leading-normal);
+  color: var(--fg);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+::selection {
+  background: var(--accent-soft-2);
+  color: var(--fg);
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--ink-4);
+  border-radius: var(--radius-md);
+  border: 2px solid var(--bg);
+}
+::-webkit-scrollbar-thumb:hover { background: var(--ink-5); }
+[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: var(--paper-4);
+  border-color: var(--bg);
+}
