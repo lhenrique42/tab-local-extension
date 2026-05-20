@@ -1,13 +1,17 @@
-import { storage } from '../lib/storage/adapter';
-import type { BackgroundMessage } from '../lib/messaging/types';
+import { storage } from "../lib/storage/adapter";
+import type { BackgroundMessage } from "../lib/messaging/types";
 import {
   handleSaveWindow,
   handleRestoreCollection,
   handleAutoGroupWindow,
   handleSyncNativeGroups,
-} from '../lib/messaging/handlers';
+} from "../lib/messaging/handlers";
+import { registerNativeGroupSyncListener } from "../lib/messaging/nativeGroupSync";
 
 export default defineBackground(() => {
+  // Register Chrome tab group sync listener (no-op if API unavailable)
+  registerNativeGroupSyncListener(storage);
+
   chrome.runtime.onMessage.addListener(
     (
       message: BackgroundMessage,
@@ -26,18 +30,20 @@ async function dispatchMessage(
   sender: chrome.runtime.MessageSender,
 ) {
   switch (message.type) {
-    case 'SAVE_WINDOW':
+    case "SAVE_WINDOW":
       return handleSaveWindow(message, sender, storage);
-    case 'RESTORE_COLLECTION':
+    case "RESTORE_COLLECTION":
       return handleRestoreCollection(message, sender, storage);
-    case 'AUTO_GROUP_WINDOW':
+    case "AUTO_GROUP_WINDOW":
       return handleAutoGroupWindow(message, sender, storage);
-    case 'SYNC_NATIVE_GROUPS':
+    case "SYNC_NATIVE_GROUPS":
       return handleSyncNativeGroups(message, sender, storage);
     default: {
       const exhaustive: never = message;
-      return { ok: false, error: `Unknown message type: ${JSON.stringify(exhaustive)}` };
+      return {
+        ok: false,
+        error: `Unknown message type: ${JSON.stringify(exhaustive)}`,
+      };
     }
   }
 }
-

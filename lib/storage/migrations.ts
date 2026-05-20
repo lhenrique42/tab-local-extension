@@ -1,5 +1,5 @@
-import type { StorageRoot } from './schema';
-import { defaultRoot } from './defaults';
+import type { StorageRoot } from "./schema";
+import { defaultRoot } from "./defaults";
 
 const CURRENT_VERSION = 1 as const;
 
@@ -10,7 +10,7 @@ const CURRENT_VERSION = 1 as const;
 export function migrateRoot(raw: unknown): StorageRoot {
   const defaults = defaultRoot();
 
-  if (raw === null || raw === undefined || typeof raw !== 'object') {
+  if (raw === null || raw === undefined || typeof raw !== "object") {
     return defaults;
   }
 
@@ -19,30 +19,33 @@ export function migrateRoot(raw: unknown): StorageRoot {
   // Apply version-to-version migrations here as new versions are added.
   // For v1 we only need to ensure all required fields exist.
 
-  const version = obj['__version'];
+  const version = obj["__version"];
 
   // Unknown future version — reset to current defaults to avoid corrupt state
-  if (typeof version === 'number' && version > CURRENT_VERSION) {
+  if (typeof version === "number" && version > CURRENT_VERSION) {
     return defaults;
   }
 
   const migrated: StorageRoot = {
     __version: 1,
     groups:
-      obj['groups'] !== null &&
-      typeof obj['groups'] === 'object' &&
-      !Array.isArray(obj['groups'])
-        ? (obj['groups'] as StorageRoot['groups'])
+      obj["groups"] !== null &&
+      typeof obj["groups"] === "object" &&
+      !Array.isArray(obj["groups"])
+        ? (obj["groups"] as StorageRoot["groups"])
         : defaults.groups,
     collections:
-      obj['collections'] !== null &&
-      typeof obj['collections'] === 'object' &&
-      !Array.isArray(obj['collections'])
-        ? (obj['collections'] as StorageRoot['collections'])
+      obj["collections"] !== null &&
+      typeof obj["collections"] === "object" &&
+      !Array.isArray(obj["collections"])
+        ? (obj["collections"] as StorageRoot["collections"])
         : defaults.collections,
     settings:
-      obj['settings'] !== null && typeof obj['settings'] === 'object'
-        ? { ...defaults.settings, ...(obj['settings'] as Partial<StorageRoot['settings']>) }
+      obj["settings"] !== null && typeof obj["settings"] === "object"
+        ? {
+            ...defaults.settings,
+            ...(obj["settings"] as Partial<StorageRoot["settings"]>),
+          }
         : defaults.settings,
   };
 

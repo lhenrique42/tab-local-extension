@@ -1,8 +1,14 @@
 import { nanoid } from "nanoid";
 import type { StorageAdapter } from "../storage/adapter";
-import type { SavedTab } from "../storage/schema";
+import type { SavedTab, ChromeGroupColor } from "../storage/schema";
 import type { BackgroundMessage, BackgroundResponse } from "./types";
-import { getCurrentWindowTabs, createTab, createWindow, discardTab } from "../chrome/tabs";
+import {
+  getCurrentWindowTabs,
+  createTab,
+  createWindow,
+  discardTab,
+} from "../chrome/tabs";
+import { queryTabGroups } from "../chrome/tabGroups";
 
 const HTTP_PATTERN = /^https?:\/\//;
 
@@ -63,12 +69,13 @@ export const handleRestoreCollection: MessageHandler<
       };
     }
 
-    const tabs = collection.tabs.filter((t) =>
-      HTTP_PATTERN.test(t.url),
-    );
+    const tabs = collection.tabs.filter((t) => HTTP_PATTERN.test(t.url));
 
     if (tabs.length === 0) {
-      return { ok: true, data: { collectionId: msg.payload.collectionId, tabCount: 0 } };
+      return {
+        ok: true,
+        data: { collectionId: msg.payload.collectionId, tabCount: 0 },
+      };
     }
 
     const discardBackground =
@@ -113,7 +120,10 @@ export const handleRestoreCollection: MessageHandler<
 
     return {
       ok: true,
-      data: { collectionId: msg.payload.collectionId, tabCount: createdTabIds.length },
+      data: {
+        collectionId: msg.payload.collectionId,
+        tabCount: createdTabIds.length,
+      },
     };
   } catch (err) {
     return {
@@ -126,13 +136,50 @@ export const handleRestoreCollection: MessageHandler<
 export const handleAutoGroupWindow: MessageHandler<
   Extract<BackgroundMessage, { type: "AUTO_GROUP_WINDOW" }>
 > = async (_msg, _sender, _storageAdapter) => {
-  // Stub — full implementation in TASK-011
+  // Stub — full implementation in TASK-013
   return { ok: true, data: null };
 };
 
 export const handleSyncNativeGroups: MessageHandler<
   Extract<BackgroundMessage, { type: "SYNC_NATIVE_GROUPS" }>
-> = async (_msg, _sender, _storageAdapter) => {
-  // Stub — full implementation in TASK-011
-  return { ok: true, data: null };
+> = async (_msg, _sender, storageAdapter) => {
+  try {
+    if (typeof chrome.tabGroups === "undefined") {
+      return { ok: true, data: { syncedCount: 0 } };
+    }
+
+    const root = await storageAdapter.read();
+    if (!root.settings.nativeGroupSyncEnabled) {
+      return { ok: true, data: { syncedCount: 0 } };
+    }
+
+    const tabGroups = await queryTabGroups();
+    if (tabGroups.length === 0) {
+      return { ok: true, data: { syncedCount: 0 } };
+    }
+
+    const groupById = new Map(tabGroups.map((g) => [g.id, g]));
+    let syncedCount = 0;
+
+    await storageAdapter.patch((draft) => {
+      for (const collection of Object.values(draft.collections)) {
+        if (collection.chromeGroupId == null) continue;
+        const liveGroup = groupById.get(collection.chromeGroupId);
+        if (!liveGroup) continue;
+        collection.chromeGroupColor = liveGroup.color as ChromeGroupColor;
+        if (liveGroup.title) {
+          collection.name = liveGroup.title;
+        }
+        collection.updatedAt = Date.now();
+        syncedCount++;
+      }
+    });
+
+    return { ok: true, data: { syncedCount } };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
 };
