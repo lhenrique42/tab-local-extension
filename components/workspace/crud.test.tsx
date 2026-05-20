@@ -81,9 +81,18 @@ const noopGroupHandlers = {
   onAddTab: vi.fn(),
   onRemoveTab: vi.fn(),
   onDuplicateTab: vi.fn(),
+  onReorderCollections: vi.fn(),
+  onReorderTabs: vi.fn(),
 };
 
-const noopCollectionHandlers = { onRename: vi.fn(), onDelete: vi.fn(), onAddTab: vi.fn(), onRemoveTab: vi.fn(), onDuplicateTab: vi.fn() };
+const noopCollectionHandlers = {
+  onRename: vi.fn(),
+  onDelete: vi.fn(),
+  onAddTab: vi.fn(),
+  onRemoveTab: vi.fn(),
+  onDuplicateTab: vi.fn(),
+  onReorderTabs: vi.fn(),
+};
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -122,6 +131,7 @@ describe("CollectionCard — inline rename", () => {
         onAddTab={vi.fn()}
         onRemoveTab={vi.fn()}
         onDuplicateTab={vi.fn()}
+        onReorderTabs={vi.fn()}
       />,
     );
 
@@ -147,6 +157,7 @@ describe("CollectionCard — inline rename", () => {
         onAddTab={vi.fn()}
         onRemoveTab={vi.fn()}
         onDuplicateTab={vi.fn()}
+        onReorderTabs={vi.fn()}
       />,
     );
 
@@ -173,6 +184,7 @@ describe("CollectionCard — inline rename", () => {
         onAddTab={vi.fn()}
         onRemoveTab={vi.fn()}
         onDuplicateTab={vi.fn()}
+        onReorderTabs={vi.fn()}
       />,
     );
 
@@ -216,6 +228,7 @@ describe("CollectionCard — delete", () => {
         onAddTab={vi.fn()}
         onRemoveTab={vi.fn()}
         onDuplicateTab={vi.fn()}
+        onReorderTabs={vi.fn()}
       />,
     );
 
@@ -238,6 +251,7 @@ describe("CollectionCard — delete", () => {
         onAddTab={vi.fn()}
         onRemoveTab={vi.fn()}
         onDuplicateTab={vi.fn()}
+        onReorderTabs={vi.fn()}
       />,
     );
 

@@ -1,6 +1,6 @@
 import React, { useState, useRef } from "react";
 import type { CSSProperties, KeyboardEvent } from "react";
-import type { SavedCollection } from "../../lib/storage/schema";
+import type { SavedCollection, SavedTab } from "../../lib/storage/schema";
 import { CHROME_GROUP_COLOR_HEX } from "../../lib/constants/colors";
 import { EmptyState, Icon, ConfirmDialog } from "../shared";
 import { TabList } from "./TabList";
@@ -12,6 +12,7 @@ interface CollectionCardProps {
   onAddTab: (collectionId: string, url: string) => void;
   onRemoveTab: (collectionId: string, tabId: string) => void;
   onDuplicateTab: (collectionId: string, tabId: string) => void;
+  onReorderTabs: (collectionId: string, newTabs: SavedTab[]) => void;
 }
 
 const PREVIEW_LIMIT = 4;
@@ -24,19 +25,24 @@ export function CollectionCard({
   onAddTab,
   onRemoveTab,
   onDuplicateTab,
+  onReorderTabs,
 }: CollectionCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [confirmRemoveTabId, setConfirmRemoveTabId] = useState<string | null>(null);
+  const [confirmRemoveTabId, setConfirmRemoveTabId] = useState<string | null>(
+    null,
+  );
   const [showAddForm, setShowAddForm] = useState(false);
   const [addUrl, setAddUrl] = useState("");
   const [addUrlError, setAddUrlError] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
   function validateUrl(url: string): boolean {
-    return url.trim().startsWith("http://") || url.trim().startsWith("https://");
+    return (
+      url.trim().startsWith("http://") || url.trim().startsWith("https://")
+    );
   }
 
   function handleAddTabSubmit(e: React.FormEvent) {
@@ -182,34 +188,69 @@ export function CollectionCard({
                   tabs={collection.tabs}
                   onRemove={(tabId) => setConfirmRemoveTabId(tabId)}
                   onDuplicate={(tabId) => onDuplicateTab(collection.id, tabId)}
+                  onReorder={(newTabs) => onReorderTabs(collection.id, newTabs)}
                 />
               )}
               <div className="tl-add-tab-area">
                 {showAddForm ? (
-                  <form className="tl-add-tab-form" onSubmit={handleAddTabSubmit} onClick={(e) => e.stopPropagation()}>
+                  <form
+                    className="tl-add-tab-form"
+                    onSubmit={handleAddTabSubmit}
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <input
                       className="tl-add-tab-input"
                       type="text"
                       placeholder="https://example.com"
                       value={addUrl}
                       autoFocus
-                      onChange={(e) => { setAddUrl(e.target.value); setAddUrlError(""); }}
+                      onChange={(e) => {
+                        setAddUrl(e.target.value);
+                        setAddUrlError("");
+                      }}
                       aria-label="Tab URL"
-                      aria-describedby={addUrlError ? "tl-add-tab-error" : undefined}
+                      aria-describedby={
+                        addUrlError ? "tl-add-tab-error" : undefined
+                      }
                     />
                     {addUrlError && (
-                      <span id="tl-add-tab-error" className="tl-add-tab-error" role="alert">{addUrlError}</span>
+                      <span
+                        id="tl-add-tab-error"
+                        className="tl-add-tab-error"
+                        role="alert"
+                      >
+                        {addUrlError}
+                      </span>
                     )}
                     <div className="tl-add-tab-actions">
-                      <button type="submit" className="tl-btn tl-btn-sm tl-btn-primary">Add</button>
-                      <button type="button" className="tl-btn tl-btn-sm tl-btn-ghost" onClick={(e) => { e.stopPropagation(); setShowAddForm(false); setAddUrl(""); setAddUrlError(""); }}>Cancel</button>
+                      <button
+                        type="submit"
+                        className="tl-btn tl-btn-sm tl-btn-primary"
+                      >
+                        Add
+                      </button>
+                      <button
+                        type="button"
+                        className="tl-btn tl-btn-sm tl-btn-ghost"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowAddForm(false);
+                          setAddUrl("");
+                          setAddUrlError("");
+                        }}
+                      >
+                        Cancel
+                      </button>
                     </div>
                   </form>
                 ) : (
                   <button
                     className="tl-btn tl-btn-sm tl-btn-ghost tl-add-tab-toggle"
                     aria-label="Add tab"
-                    onClick={(e) => { e.stopPropagation(); setShowAddForm(true); }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowAddForm(true);
+                    }}
                   >
                     + Add tab
                   </button>
@@ -238,7 +279,9 @@ export function CollectionCard({
                     </div>
                   ))}
                   {rest > 0 && (
-                    <div className="tl-collection-item is-more">+ {rest} more</div>
+                    <div className="tl-collection-item is-more">
+                      + {rest} more
+                    </div>
                   )}
                 </>
               )}

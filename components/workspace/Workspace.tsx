@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { nanoid } from "nanoid";
-import type { StorageRoot } from "../../lib/storage/schema";
+import type { StorageRoot, SavedTab } from "../../lib/storage/schema";
 import { storage } from "../../lib/storage/adapter";
 import { Icon } from "../shared";
 import { GroupSection } from "./GroupSection";
@@ -137,6 +137,24 @@ export function Workspace({ root, loading }: WorkspaceProps) {
     });
   }
 
+  function handleReorderTabs(collectionId: string, newTabs: SavedTab[]) {
+    void storage.patch((draft) => {
+      if (draft.collections[collectionId]) {
+        draft.collections[collectionId].tabs = newTabs;
+        draft.collections[collectionId].updatedAt = Date.now();
+      }
+    });
+  }
+
+  function handleReorderCollections(groupId: string, newIds: string[]) {
+    void storage.patch((draft) => {
+      if (draft.groups[groupId]) {
+        draft.groups[groupId].collectionIds = newIds;
+        draft.groups[groupId].updatedAt = Date.now();
+      }
+    });
+  }
+
   if (loading) {
     return (
       <div className="tl-app">
@@ -211,6 +229,8 @@ export function Workspace({ root, loading }: WorkspaceProps) {
                   onAddTab={handleAddTab}
                   onRemoveTab={handleRemoveTab}
                   onDuplicateTab={handleDuplicateTab}
+                  onReorderTabs={handleReorderTabs}
+                  onReorderCollections={handleReorderCollections}
                 />
               );
             })}

@@ -1,6 +1,25 @@
 import { useState } from "react";
-import type { KeyboardEvent } from "react";
-import type { SavedCollection, SavedGroup } from "../../lib/storage/schema";
+import type { CSSProperties, KeyboardEvent } from "react";
+import {
+  DndContext,
+  DragOverlay,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  rectSortingStrategy,
+  sortableKeyboardCoordinates,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import type { SavedCollection, SavedGroup, SavedTab } from "../../lib/storage/schema";
 import { CHROME_GROUP_COLOR_HEX } from "../../lib/constants/colors";
 import { Icon, ConfirmDialog } from "../shared";
 import { CollectionCard } from "./CollectionCard";
@@ -17,6 +36,52 @@ interface GroupSectionProps {
   onAddTab: (collectionId: string, url: string) => void;
   onRemoveTab: (collectionId: string, tabId: string) => void;
   onDuplicateTab: (collectionId: string, tabId: string) => void;
+  onReorderCollections: (groupId: string, newIds: string[]) => void;
+  onReorderTabs: (collectionId: string, newTabs: SavedTab[]) => void;
+}
+
+/* ------------------------------------------------------------------ */
+/*  SortableCollectionCard — wraps CollectionCard with useSortable      */
+/* ------------------------------------------------------------------ */
+
+interface SortableCollectionCardProps {
+  collection: SavedCollection;
+  isDragging?: boolean;
+  onRename: (id: string, name: string) => void;
+  onDelete: (id: string) => void;
+  onAddTab: (collectionId: string, url: string) => void;
+  onRemoveTab: (collectionId: string, tabId: string) => void;
+  onDuplicateTab: (collectionId: string, tabId: string) => void;
+  onReorderTabs: (collectionId: string, newTabs: SavedTab[]) => void;
+}
+
+function SortableCollectionCard({
+  collection,
+  isDragging = false,
+  ...cardProps
+}: SortableCollectionCardProps) {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: collection.id });
+
+  const style: CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="tl-sortable-card-wrapper">
+      <button
+        className="tl-drag-handle tl-card-drag-handle"
+        aria-label={`Drag ${collection.name}`}
+        title="Drag to reorder"
+        {...attributes}
+        {...listeners}
+      >
+        <Icon name="grip" size={12} aria-hidden />
+      </button>
+      <CollectionCard collection={collection} {...cardProps} />
+    </div>
+  );
 }
 
 /** Renders a named group section header with a collapsible collection card grid. */
@@ -32,11 +97,34 @@ export function GroupSection({
   onAddTab,
   onRemoveTab,
   onDuplicateTab,
+  onReorderCollections,
+  onReorderTabs,
 }: GroupSectionProps) {
   const [open, setOpen] = useState(defaultOpen);
   const [renaming, setRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  function handleCollectionDragStart(event: DragStartEvent) {
+    setActiveCollectionId(String(event.active.id));
+  }
+
+  function handleCollectionDragEnd(event: DragEndEvent) {
+    setActiveCollectionId(null);
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const ids = collections.map((c) => c.id);
+    const oldIndex = ids.indexOf(String(active.id));
+    const newIndex = ids.indexOf(String(over.id));
+    if (oldIndex === -1 || newIndex === -1) return;
+    onReorderCollections(group.id, arrayMove(ids, oldIndex, newIndex));
+  }
 
   const dotColor =
     group.color && group.color in CHROME_GROUP_COLOR_HEX
@@ -162,19 +250,47 @@ export function GroupSection({
           (collections.length === 0 ? (
             <p className="tl-group-empty">No collections in this group yet.</p>
           ) : (
-            <div className="tl-grid">
-              {collections.map((c) => (
-                <CollectionCard
-                  key={c.id}
-                  collection={c}
-                  onRename={onRenameCollection}
-                  onDelete={onDeleteCollection}
-                  onAddTab={onAddTab}
-                  onRemoveTab={onRemoveTab}
-                  onDuplicateTab={onDuplicateTab}
-                />
-              ))}
-            </div>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={handleCollectionDragStart}
+              onDragEnd={handleCollectionDragEnd}
+              accessibility={{
+                screenReaderInstructions: {
+                  draggable: "To reorder, press Space or Enter to start dragging. Use arrow keys to move. Press Space or Enter to drop.",
+                },
+              }}
+            >
+              <SortableContext items={collections.map((c) => c.id)} strategy={rectSortingStrategy}>
+                <div className="tl-grid">
+                  {collections.map((c) => (
+                    <SortableCollectionCard
+                      key={c.id}
+                      collection={c}
+                      isDragging={activeCollectionId === c.id}
+                      onRename={onRenameCollection}
+                      onDelete={onDeleteCollection}
+                      onAddTab={onAddTab}
+                      onRemoveTab={onRemoveTab}
+                      onDuplicateTab={onDuplicateTab}
+                      onReorderTabs={onReorderTabs}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+              <DragOverlay>
+                {activeCollectionId ? (
+                  (() => {
+                    const activeCollection = collections.find((c) => c.id === activeCollectionId);
+                    return activeCollection ? (
+                      <div className="tl-drag-overlay-card">
+                        <span className="tl-collection-title">{activeCollection.name}</span>
+                      </div>
+                    ) : null;
+                  })()
+                ) : null}
+              </DragOverlay>
+            </DndContext>
           ))}
       </section>
 

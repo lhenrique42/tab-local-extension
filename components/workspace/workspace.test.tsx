@@ -150,6 +150,8 @@ describe("GroupSection", () => {
     onAddTab: vi.fn(),
     onRemoveTab: vi.fn(),
     onDuplicateTab: vi.fn(),
+    onReorderCollections: vi.fn(),
+    onReorderTabs: vi.fn(),
   };
 
   it("renders the group name", () => {
@@ -213,7 +215,14 @@ describe("GroupSection", () => {
 // CollectionCard
 // -------------------------------------------------------------------
 describe("CollectionCard", () => {
-  const noopCollectionHandlers = { onRename: vi.fn(), onDelete: vi.fn(), onAddTab: vi.fn(), onRemoveTab: vi.fn(), onDuplicateTab: vi.fn() };
+  const noopCollectionHandlers = {
+    onRename: vi.fn(),
+    onDelete: vi.fn(),
+    onAddTab: vi.fn(),
+    onRemoveTab: vi.fn(),
+    onReorderTabs: vi.fn(),
+    onDuplicateTab: vi.fn(),
+  };
 
   it("renders collection name and tab count badge", () => {
     const collection = makeCollection({
