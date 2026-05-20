@@ -84,9 +84,7 @@ describe("TabList — drag handles", () => {
 
   it("renders without crashing when onReorder is not provided", () => {
     const tabs: SavedTab[] = [makeTab({ title: "Solo" })];
-    render(
-      <TabList tabs={tabs} onRemove={vi.fn()} onDuplicate={vi.fn()} />,
-    );
+    render(<TabList tabs={tabs} onRemove={vi.fn()} onDuplicate={vi.fn()} />);
     expect(screen.getByText("Solo")).toBeInTheDocument();
   });
 
@@ -131,7 +129,11 @@ describe("tab reorder logic", () => {
 
   it("onReorder is called with the reordered tabs array", () => {
     // This test verifies the callback contract used in TabList handleDragEnd.
-    const tabs = [makeTab({ id: "t1" }), makeTab({ id: "t2" }), makeTab({ id: "t3" })];
+    const tabs = [
+      makeTab({ id: "t1" }),
+      makeTab({ id: "t2" }),
+      makeTab({ id: "t3" }),
+    ];
     const onReorder = vi.fn();
 
     // Simulate what handleDragEnd does: get activeId + overId, call arrayMove, then onReorder
@@ -172,6 +174,10 @@ describe("collection reorder logic", () => {
     const newIds = arrayMove(ids, oldIndex, newIndex);
     onReorderCollections("group-1", newIds);
 
-    expect(onReorderCollections).toHaveBeenCalledWith("group-1", ["c3", "c1", "c2"]);
+    expect(onReorderCollections).toHaveBeenCalledWith("group-1", [
+      "c3",
+      "c1",
+      "c2",
+    ]);
   });
 });

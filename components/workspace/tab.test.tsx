@@ -73,6 +73,7 @@ const noopCardHandlers = {
   onRemoveTab: vi.fn(),
   onDuplicateTab: vi.fn(),
   onReorderTabs: vi.fn(),
+  onRestore: vi.fn().mockResolvedValue(undefined),
 };
 
 /** Helper: expand a CollectionCard by clicking the article */

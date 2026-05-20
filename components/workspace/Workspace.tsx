@@ -2,6 +2,7 @@ import { useState } from "react";
 import { nanoid } from "nanoid";
 import type { StorageRoot, SavedTab } from "../../lib/storage/schema";
 import { storage } from "../../lib/storage/adapter";
+import { sendToBackground } from "../../lib/messaging/client";
 import { Icon } from "../shared";
 import { GroupSection } from "./GroupSection";
 import { LiveTabsSidebar } from "./LiveTabsSidebar";
@@ -155,6 +156,13 @@ export function Workspace({ root, loading }: WorkspaceProps) {
     });
   }
 
+  async function handleRestore(collectionId: string) {
+    await sendToBackground({
+      type: "RESTORE_COLLECTION",
+      payload: { collectionId, newWindow: false },
+    });
+  }
+
   if (loading) {
     return (
       <div className="tl-app">
@@ -231,6 +239,7 @@ export function Workspace({ root, loading }: WorkspaceProps) {
                   onDuplicateTab={handleDuplicateTab}
                   onReorderTabs={handleReorderTabs}
                   onReorderCollections={handleReorderCollections}
+                  onRestore={handleRestore}
                 />
               );
             })}

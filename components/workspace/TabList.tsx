@@ -92,7 +92,13 @@ interface TabRowContentProps {
   dragHandleProps?: HTMLAttributes<HTMLButtonElement>;
 }
 
-function TabRowContent({ tab, onRemove, onDuplicate, isDragging, dragHandleProps }: TabRowContentProps) {
+function TabRowContent({
+  tab,
+  onRemove,
+  onDuplicate,
+  isDragging,
+  dragHandleProps,
+}: TabRowContentProps) {
   const hasActions = Boolean(onRemove ?? onDuplicate);
   return (
     <div
@@ -134,9 +140,28 @@ function TabRowContent({ tab, onRemove, onDuplicate, isDragging, dragHandleProps
                 onDuplicate(tab.id);
               }}
             >
-              <svg width="11" height="11" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-                <rect x="4" y="4" width="9" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
-                <path d="M1 10V2a1 1 0 0 1 1-1h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              <svg
+                width="11"
+                height="11"
+                viewBox="0 0 14 14"
+                fill="none"
+                aria-hidden="true"
+              >
+                <rect
+                  x="4"
+                  y="4"
+                  width="9"
+                  height="9"
+                  rx="1.5"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                />
+                <path
+                  d="M1 10V2a1 1 0 0 1 1-1h8"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                />
               </svg>
             </button>
           )}
@@ -150,8 +175,20 @@ function TabRowContent({ tab, onRemove, onDuplicate, isDragging, dragHandleProps
                 onRemove(tab.id);
               }}
             >
-              <svg width="11" height="11" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-                <path d="M2 4h10M5 4V2h4v2M6 7v4M8 7v4M3 4l1 8h6l1-8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              <svg
+                width="11"
+                height="11"
+                viewBox="0 0 14 14"
+                fill="none"
+                aria-hidden="true"
+              >
+                <path
+                  d="M2 4h10M5 4V2h4v2M6 7v4M8 7v4M3 4l1 8h6l1-8"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
               </svg>
             </button>
           )}
@@ -172,7 +209,14 @@ interface SortableTabRowProps {
 }
 
 function SortableTabRow({ tab, onRemove, onDuplicate }: SortableTabRowProps) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: tab.id });
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: tab.id });
 
   const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -186,7 +230,9 @@ function SortableTabRow({ tab, onRemove, onDuplicate }: SortableTabRowProps) {
         tab={tab}
         onRemove={onRemove}
         onDuplicate={onDuplicate}
-        dragHandleProps={{ ...attributes, ...listeners } as HTMLAttributes<HTMLButtonElement>}
+        dragHandleProps={
+          { ...attributes, ...listeners } as HTMLAttributes<HTMLButtonElement>
+        }
       />
     </div>
   );
@@ -204,12 +250,19 @@ interface TabListProps {
 }
 
 /** Interactive, sortable list of saved tab rows inside an expanded CollectionCard. */
-export function TabList({ tabs, onRemove, onDuplicate, onReorder }: TabListProps) {
+export function TabList({
+  tabs,
+  onRemove,
+  onDuplicate,
+  onReorder,
+}: TabListProps) {
   const [activeTab, setActiveTab] = useState<SavedTab | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
   );
 
   function handleDragStart(event: DragStartEvent) {
@@ -235,11 +288,15 @@ export function TabList({ tabs, onRemove, onDuplicate, onReorder }: TabListProps
       onDragEnd={handleDragEnd}
       accessibility={{
         screenReaderInstructions: {
-          draggable: "To reorder, press Space or Enter to start dragging. Use arrow keys to move. Press Space or Enter to drop.",
+          draggable:
+            "To reorder, press Space or Enter to start dragging. Use arrow keys to move. Press Space or Enter to drop.",
         },
       }}
     >
-      <SortableContext items={tabs.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+      <SortableContext
+        items={tabs.map((t) => t.id)}
+        strategy={verticalListSortingStrategy}
+      >
         <div role="list" aria-label="Saved tabs">
           {tabs.map((tab) => (
             <SortableTabRow
@@ -252,9 +309,7 @@ export function TabList({ tabs, onRemove, onDuplicate, onReorder }: TabListProps
         </div>
       </SortableContext>
       <DragOverlay>
-        {activeTab ? (
-          <TabRowContent tab={activeTab} isDragging />
-        ) : null}
+        {activeTab ? <TabRowContent tab={activeTab} isDragging /> : null}
       </DragOverlay>
     </DndContext>
   );

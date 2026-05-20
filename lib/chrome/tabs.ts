@@ -59,6 +59,21 @@ export async function discardTab(tabId: number): Promise<void> {
 }
 
 /**
+ * Creates a new browser window with the given URL as the first tab.
+ * Returns the window object (including its first tab if created).
+ */
+export async function createWindow(
+  url: string,
+): Promise<chrome.windows.Window | null> {
+  try {
+    return (await chrome.windows.create({ url, focused: true })) ?? null;
+  } catch (err) {
+    console.error("[tabs] createWindow failed:", err);
+    return null;
+  }
+}
+
+/**
  * Groups the provided tab IDs into a Chrome tab group, optionally in a target groupId.
  */
 export async function groupTabs(

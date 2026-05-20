@@ -13,6 +13,7 @@ interface CollectionCardProps {
   onRemoveTab: (collectionId: string, tabId: string) => void;
   onDuplicateTab: (collectionId: string, tabId: string) => void;
   onReorderTabs: (collectionId: string, newTabs: SavedTab[]) => void;
+  onRestore: (collectionId: string) => Promise<void>;
 }
 
 const PREVIEW_LIMIT = 4;
@@ -26,6 +27,7 @@ export function CollectionCard({
   onRemoveTab,
   onDuplicateTab,
   onReorderTabs,
+  onRestore,
 }: CollectionCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [renaming, setRenaming] = useState(false);
@@ -37,6 +39,7 @@ export function CollectionCard({
   const [showAddForm, setShowAddForm] = useState(false);
   const [addUrl, setAddUrl] = useState("");
   const [addUrlError, setAddUrlError] = useState("");
+  const [restoring, setRestoring] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   function validateUrl(url: string): boolean {
@@ -137,6 +140,28 @@ export function CollectionCard({
           </div>
 
           <div className="tl-collection-head-right">
+            <button
+              className="tl-btn tl-btn-sm tl-btn-ghost"
+              aria-label="Restore collection"
+              title="Restore tabs"
+              disabled={restoring}
+              aria-busy={restoring}
+              onClick={async (e) => {
+                e.stopPropagation();
+                setRestoring(true);
+                try {
+                  await onRestore(collection.id);
+                } finally {
+                  setRestoring(false);
+                }
+              }}
+            >
+              {restoring ? (
+                <span aria-hidden>…</span>
+              ) : (
+                <Icon name="external" size={12} aria-hidden />
+              )}
+            </button>
             <button
               className="tl-btn tl-btn-sm tl-btn-ghost"
               aria-label="Rename collection"

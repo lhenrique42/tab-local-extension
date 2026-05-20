@@ -100,23 +100,38 @@ describe('handleSaveWindow', () => {
 // ──────────────────────────────────────────────
 
 describe('handleRestoreCollection', () => {
-  it('returns ok when collection exists', async () => {
-    const adapter = makeStorage();
-    const root = defaultRoot();
+  function makeCollection(tabs: Array<{ url: string }> = []) {
     const cid = 'col1';
-    root.collections[cid] = {
+    return {
       id: cid,
       name: 'Work',
       groupId: null,
       chromeGroupColor: null,
-      tabs: [],
+      tabs: tabs.map((t, i) => ({
+        id: `t${i}`,
+        url: t.url,
+        title: t.url,
+        faviconUrl: null,
+        addedAt: 1000,
+      })),
       createdAt: 1000,
       updatedAt: 1000,
     };
+  }
+
+  async function seedCollection(adapter: StorageAdapter, tabs: Array<{ url: string }> = []) {
+    const root = defaultRoot();
+    root.collections['col1'] = makeCollection(tabs);
     await fakeBrowser.storage.local.set({ __tablocal_root: root });
+    return adapter;
+  }
+
+  it('returns ok when collection exists', async () => {
+    const adapter = makeStorage();
+    await seedCollection(adapter, []);
 
     const result = await handleRestoreCollection(
-      { type: 'RESTORE_COLLECTION', payload: { collectionId: cid, newWindow: false } },
+      { type: 'RESTORE_COLLECTION', payload: { collectionId: 'col1', newWindow: false } },
       dummySender,
       adapter,
     );
@@ -137,7 +152,158 @@ describe('handleRestoreCollection', () => {
     if (result.ok) return;
     expect(result.error).toMatch(/not found/);
   });
+
+  it('calls chrome.tabs.create for each restorable tab', async () => {
+    const adapter = makeStorage();
+    await seedCollection(adapter, [
+      { url: 'https://a.com' },
+      { url: 'https://b.com' },
+    ]);
+
+    const createSpy = vi.spyOn(fakeBrowser.tabs, 'create').mockResolvedValue({ id: 1 } as chrome.tabs.Tab);
+
+    await handleRestoreCollection(
+      { type: 'RESTORE_COLLECTION', payload: { collectionId: 'col1', newWindow: false } },
+      dummySender,
+      adapter,
+    );
+
+    expect(createSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('creates first tab with active:true and remaining with active:false', async () => {
+    const adapter = makeStorage();
+    await seedCollection(adapter, [
+      { url: 'https://a.com' },
+      { url: 'https://b.com' },
+      { url: 'https://c.com' },
+    ]);
+
+    const createSpy = vi.spyOn(fakeBrowser.tabs, 'create').mockResolvedValue({ id: 99 } as chrome.tabs.Tab);
+
+    await handleRestoreCollection(
+      { type: 'RESTORE_COLLECTION', payload: { collectionId: 'col1', newWindow: false } },
+      dummySender,
+      adapter,
+    );
+
+    const calls = createSpy.mock.calls;
+    expect(calls[0][0]).toMatchObject({ url: 'https://a.com', active: true });
+    expect(calls[1][0]).toMatchObject({ url: 'https://b.com', active: false });
+    expect(calls[2][0]).toMatchObject({ url: 'https://c.com', active: false });
+  });
+
+  it('calls chrome.tabs.discard for background tabs when discard-background mode', async () => {
+    const adapter = makeStorage();
+    const root = defaultRoot();
+    root.settings.defaultRestoreMode = 'discard-background';
+    root.collections['col1'] = makeCollection([
+      { url: 'https://a.com' },
+      { url: 'https://b.com' },
+    ]);
+    await fakeBrowser.storage.local.set({ __tablocal_root: root });
+
+    vi.spyOn(fakeBrowser.tabs, 'create').mockResolvedValue({ id: 42 } as chrome.tabs.Tab);
+    const discardSpy = vi.spyOn(fakeBrowser.tabs, 'discard').mockResolvedValue({} as chrome.tabs.Tab);
+
+    await handleRestoreCollection(
+      { type: 'RESTORE_COLLECTION', payload: { collectionId: 'col1', newWindow: false } },
+      dummySender,
+      adapter,
+    );
+
+    // Only the second tab (inactive) should be discarded
+    expect(discardSpy).toHaveBeenCalledTimes(1);
+    expect(discardSpy).toHaveBeenCalledWith(42);
+  });
+
+  it('does not discard tabs in active-all mode', async () => {
+    const adapter = makeStorage();
+    const root = defaultRoot();
+    root.settings.defaultRestoreMode = 'active-all';
+    root.collections['col1'] = makeCollection([
+      { url: 'https://a.com' },
+      { url: 'https://b.com' },
+    ]);
+    await fakeBrowser.storage.local.set({ __tablocal_root: root });
+
+    vi.spyOn(fakeBrowser.tabs, 'create').mockResolvedValue({ id: 10 } as chrome.tabs.Tab);
+    const discardSpy = vi.spyOn(fakeBrowser.tabs, 'discard').mockResolvedValue({} as chrome.tabs.Tab);
+
+    await handleRestoreCollection(
+      { type: 'RESTORE_COLLECTION', payload: { collectionId: 'col1', newWindow: false } },
+      dummySender,
+      adapter,
+    );
+
+    expect(discardSpy).not.toHaveBeenCalled();
+  });
+
+  it('calls chrome.windows.create when newWindow is true', async () => {
+    const adapter = makeStorage();
+    await seedCollection(adapter, [{ url: 'https://a.com' }, { url: 'https://b.com' }]);
+
+    const windowCreateSpy = vi.spyOn(fakeBrowser.windows, 'create').mockResolvedValue({
+      id: 5,
+      tabs: [{ id: 55 } as chrome.tabs.Tab],
+    } as chrome.windows.Window);
+
+    vi.spyOn(fakeBrowser.tabs, 'create').mockResolvedValue({ id: 56 } as chrome.tabs.Tab);
+
+    const result = await handleRestoreCollection(
+      { type: 'RESTORE_COLLECTION', payload: { collectionId: 'col1', newWindow: true } },
+      dummySender,
+      adapter,
+    );
+
+    expect(result.ok).toBe(true);
+    expect(windowCreateSpy).toHaveBeenCalledTimes(1);
+    expect(windowCreateSpy).toHaveBeenCalledWith(expect.objectContaining({ url: 'https://a.com' }));
+  });
+
+  it('filters out non-http/https URLs', async () => {
+    const adapter = makeStorage();
+    const root = defaultRoot();
+    root.collections['col1'] = makeCollection([
+      { url: 'https://a.com' },
+      { url: 'chrome://newtab/' },
+      { url: 'about:blank' },
+    ]);
+    await fakeBrowser.storage.local.set({ __tablocal_root: root });
+
+    const createSpy = vi.spyOn(fakeBrowser.tabs, 'create').mockResolvedValue({ id: 1 } as chrome.tabs.Tab);
+
+    await handleRestoreCollection(
+      { type: 'RESTORE_COLLECTION', payload: { collectionId: 'col1', newWindow: false } },
+      dummySender,
+      adapter,
+    );
+
+    // Only the https tab should be created
+    expect(createSpy).toHaveBeenCalledTimes(1);
+    expect(createSpy).toHaveBeenCalledWith(expect.objectContaining({ url: 'https://a.com' }));
+  });
+
+  it('returns ok with tabCount 0 when all URLs are non-http', async () => {
+    const adapter = makeStorage();
+    const root = defaultRoot();
+    root.collections['col1'] = makeCollection([
+      { url: 'chrome://newtab/' },
+    ]);
+    await fakeBrowser.storage.local.set({ __tablocal_root: root });
+
+    const result = await handleRestoreCollection(
+      { type: 'RESTORE_COLLECTION', payload: { collectionId: 'col1', newWindow: false } },
+      dummySender,
+      adapter,
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect((result.data as { tabCount: number }).tabCount).toBe(0);
+  });
 });
+
 
 // ──────────────────────────────────────────────
 // sendToBackground

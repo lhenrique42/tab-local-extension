@@ -2,7 +2,7 @@ import { nanoid } from "nanoid";
 import type { StorageAdapter } from "../storage/adapter";
 import type { SavedTab } from "../storage/schema";
 import type { BackgroundMessage, BackgroundResponse } from "./types";
-import { getCurrentWindowTabs } from "../chrome/tabs";
+import { getCurrentWindowTabs, createTab, createWindow, discardTab } from "../chrome/tabs";
 
 const HTTP_PATTERN = /^https?:\/\//;
 
@@ -62,7 +62,59 @@ export const handleRestoreCollection: MessageHandler<
         error: `Collection '${msg.payload.collectionId}' not found`,
       };
     }
-    return { ok: true, data: { collectionId: msg.payload.collectionId } };
+
+    const tabs = collection.tabs.filter((t) =>
+      HTTP_PATTERN.test(t.url),
+    );
+
+    if (tabs.length === 0) {
+      return { ok: true, data: { collectionId: msg.payload.collectionId, tabCount: 0 } };
+    }
+
+    const discardBackground =
+      root.settings.defaultRestoreMode === "discard-background";
+    const createdTabIds: number[] = [];
+
+    if (msg.payload.newWindow) {
+      // Open first tab in a new window (active by default)
+      const win = await createWindow(tabs[0].url);
+      const windowId = win?.id;
+      const firstTab = win?.tabs?.[0];
+      if (firstTab?.id != null) createdTabIds.push(firstTab.id);
+
+      // Open remaining tabs in that window as inactive
+      for (const tab of tabs.slice(1)) {
+        const created = windowId
+          ? await chrome.tabs.create({ url: tab.url, windowId, active: false })
+          : await createTab(tab.url, false);
+        if (created?.id != null) {
+          createdTabIds.push(created.id);
+          if (discardBackground) {
+            await discardTab(created.id);
+          }
+        }
+      }
+    } else {
+      // Open first tab as active in current window
+      const firstCreated = await createTab(tabs[0].url, true);
+      if (firstCreated?.id != null) createdTabIds.push(firstCreated.id);
+
+      // Open remaining as inactive
+      for (const tab of tabs.slice(1)) {
+        const created = await createTab(tab.url, false);
+        if (created?.id != null) {
+          createdTabIds.push(created.id);
+          if (discardBackground) {
+            await discardTab(created.id);
+          }
+        }
+      }
+    }
+
+    return {
+      ok: true,
+      data: { collectionId: msg.payload.collectionId, tabCount: createdTabIds.length },
+    };
   } catch (err) {
     return {
       ok: false,

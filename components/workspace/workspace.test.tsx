@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { renderHook, act } from "@testing-library/react";
 import { fakeBrowser } from "@webext-core/fake-browser";
 import type {
@@ -152,6 +153,7 @@ describe("GroupSection", () => {
     onDuplicateTab: vi.fn(),
     onReorderCollections: vi.fn(),
     onReorderTabs: vi.fn(),
+    onRestore: vi.fn().mockResolvedValue(undefined),
   };
 
   it("renders the group name", () => {
@@ -221,6 +223,7 @@ describe("CollectionCard", () => {
     onAddTab: vi.fn(),
     onRemoveTab: vi.fn(),
     onReorderTabs: vi.fn(),
+    onRestore: vi.fn().mockResolvedValue(undefined),
     onDuplicateTab: vi.fn(),
   };
 
@@ -270,6 +273,32 @@ describe("CollectionCard", () => {
     );
     // Should show max 4 preview + "+2 more"
     expect(screen.getByText("+ 2 more")).toBeInTheDocument();
+  });
+
+  it("renders a Restore button", () => {
+    const collection = makeCollection();
+    render(
+      <CollectionCard collection={collection} {...noopCollectionHandlers} />,
+    );
+    expect(
+      screen.getByRole("button", { name: "Restore collection" }),
+    ).toBeInTheDocument();
+  });
+
+  it("calls onRestore with collectionId when Restore button is clicked", async () => {
+    const onRestore = vi.fn().mockResolvedValue(undefined);
+    const collection = makeCollection();
+    render(
+      <CollectionCard
+        collection={collection}
+        {...noopCollectionHandlers}
+        onRestore={onRestore}
+      />,
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Restore collection" }),
+    );
+    expect(onRestore).toHaveBeenCalledWith(collection.id);
   });
 });
 

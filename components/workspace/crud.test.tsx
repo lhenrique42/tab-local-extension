@@ -83,6 +83,7 @@ const noopGroupHandlers = {
   onDuplicateTab: vi.fn(),
   onReorderCollections: vi.fn(),
   onReorderTabs: vi.fn(),
+  onRestore: vi.fn().mockResolvedValue(undefined),
 };
 
 const noopCollectionHandlers = {
@@ -92,6 +93,7 @@ const noopCollectionHandlers = {
   onRemoveTab: vi.fn(),
   onDuplicateTab: vi.fn(),
   onReorderTabs: vi.fn(),
+  onRestore: vi.fn().mockResolvedValue(undefined),
 };
 
 beforeEach(() => {
@@ -132,6 +134,7 @@ describe("CollectionCard — inline rename", () => {
         onRemoveTab={vi.fn()}
         onDuplicateTab={vi.fn()}
         onReorderTabs={vi.fn()}
+        onRestore={vi.fn().mockResolvedValue(undefined)}
       />,
     );
 
@@ -158,6 +161,7 @@ describe("CollectionCard — inline rename", () => {
         onRemoveTab={vi.fn()}
         onDuplicateTab={vi.fn()}
         onReorderTabs={vi.fn()}
+        onRestore={vi.fn().mockResolvedValue(undefined)}
       />,
     );
 
@@ -185,6 +189,7 @@ describe("CollectionCard — inline rename", () => {
         onRemoveTab={vi.fn()}
         onDuplicateTab={vi.fn()}
         onReorderTabs={vi.fn()}
+        onRestore={vi.fn().mockResolvedValue(undefined)}
       />,
     );
 
@@ -229,6 +234,7 @@ describe("CollectionCard — delete", () => {
         onRemoveTab={vi.fn()}
         onDuplicateTab={vi.fn()}
         onReorderTabs={vi.fn()}
+        onRestore={vi.fn().mockResolvedValue(undefined)}
       />,
     );
 
@@ -252,6 +258,7 @@ describe("CollectionCard — delete", () => {
         onRemoveTab={vi.fn()}
         onDuplicateTab={vi.fn()}
         onReorderTabs={vi.fn()}
+        onRestore={vi.fn().mockResolvedValue(undefined)}
       />,
     );
 
