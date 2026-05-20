@@ -148,6 +148,11 @@ export function Popup() {
     window.close();
   }
 
+  function handleOpenSettings() {
+    void createTab(chrome.runtime.getURL("settings.html"));
+    window.close();
+  }
+
   async function handleAutoGroup() {
     setGrouping(true);
     const response = await sendToBackground({
@@ -231,14 +236,25 @@ export function Popup() {
           <kbd>D</kbd>
           <span style={{ marginLeft: 6 }}>quick save</span>
         </span>
-        <button
-          className="tl-btn tl-btn-ghost"
-          style={{ height: "auto", padding: 0, fontSize: 11 }}
-          onClick={handleOpenWorkspace}
-          aria-label="Open workspace in new tab"
-        >
-          Open workspace <Icon name="external" size={11} />
-        </button>
+        <span style={{ display: "flex", gap: 8 }}>
+          <button
+            className="tl-btn tl-btn-ghost"
+            style={{ height: "auto", padding: 0, fontSize: 11 }}
+            onClick={handleOpenSettings}
+            aria-label="Open settings"
+          >
+            <Icon name="settings" size={11} />
+            Settings
+          </button>
+          <button
+            className="tl-btn tl-btn-ghost"
+            style={{ height: "auto", padding: 0, fontSize: 11 }}
+            onClick={handleOpenWorkspace}
+            aria-label="Open workspace in new tab"
+          >
+            Open workspace <Icon name="external" size={11} />
+          </button>
+        </span>
       </footer>
     </div>
   );

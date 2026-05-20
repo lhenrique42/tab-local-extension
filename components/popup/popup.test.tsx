@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { fakeBrowser } from "@webext-core/fake-browser";
 import { Popup } from "./Popup";
 import type { StorageRoot } from "../../lib/storage/schema";
 import { defaultRoot } from "../../lib/storage/defaults";
@@ -229,5 +230,37 @@ describe("Popup — Auto-Group Tabs button", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(
       "Tab groups unavailable",
     );
+  });
+});
+
+// ──────────────────────────────────────────────
+// Open Settings link
+// ──────────────────────────────────────────────
+
+describe("Popup — Open Settings link", () => {
+  beforeEach(() => {
+    // Provide runtime.getURL stub
+    vi.stubGlobal("chrome", {
+      ...fakeBrowser,
+      runtime: { ...fakeBrowser.runtime, getURL: (path: string) => `chrome-extension://test/${path}` },
+    });
+  });
+
+  it("renders an Open Settings button", () => {
+    render(<Popup />);
+    expect(
+      screen.getByRole("button", { name: /open settings/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("opens settings page and closes popup on click", async () => {
+    render(<Popup />);
+    await userEvent.click(screen.getByRole("button", { name: /open settings/i }));
+    await waitFor(() =>
+      expect(mockCreateTab).toHaveBeenCalledWith(
+        expect.stringContaining("settings.html"),
+      ),
+    );
+    expect(window.close).toHaveBeenCalled();
   });
 });
