@@ -482,3 +482,23 @@
   font-weight: 600;
   flex-shrink: 0;
 }
+
+/* =========================================================
+   Inline rename input
+   ========================================================= */
+.tl-inline-input {
+  background: transparent;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  color: var(--fg);
+  font: inherit;
+  outline: none;
+  padding: 0 4px;
+  width: 100%;
+  min-width: 0;
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+.tl-inline-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}

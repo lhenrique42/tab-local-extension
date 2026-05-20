@@ -131,9 +131,17 @@ describe('Workspace', () => {
 // GroupSection
 // -------------------------------------------------------------------
 describe('GroupSection', () => {
+  const noopHandlers = {
+    onNewCollection: vi.fn(),
+    onRenameGroup: vi.fn(),
+    onDeleteGroup: vi.fn(),
+    onRenameCollection: vi.fn(),
+    onDeleteCollection: vi.fn(),
+  };
+
   it('renders the group name', () => {
     const group = makeGroup({ name: 'Research' });
-    render(<GroupSection group={group} collections={[]} />);
+    render(<GroupSection group={group} collections={[]} {...noopHandlers} />);
     expect(screen.getByText('Research')).toBeInTheDocument();
   });
 
@@ -143,21 +151,21 @@ describe('GroupSection', () => {
       makeCollection({ id: 'c1', name: 'Alpha' }),
       makeCollection({ id: 'c2', name: 'Beta' }),
     ];
-    render(<GroupSection group={group} collections={collections} />);
+    render(<GroupSection group={group} collections={collections} {...noopHandlers} />);
     expect(screen.getByRole('heading', { level: 3, name: 'Alpha' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 3, name: 'Beta' })).toBeInTheDocument();
   });
 
   it('shows empty message when group has no collections', () => {
     const group = makeGroup({ collectionIds: [] });
-    render(<GroupSection group={group} collections={[]} />);
+    render(<GroupSection group={group} collections={[]} {...noopHandlers} />);
     expect(screen.getByText(/no collections in this group/i)).toBeInTheDocument();
   });
 
   it('toggles collapsed state when header is clicked', () => {
     const group = makeGroup({ name: 'Toggle Me', collectionIds: ['c1'] });
     const collections = [makeCollection({ id: 'c1', name: 'Visible' })];
-    render(<GroupSection group={group} collections={collections} />);
+    render(<GroupSection group={group} collections={collections} {...noopHandlers} />);
     // Visible initially (use heading to avoid duplicate match with footer)
     expect(screen.getByRole('heading', { level: 3, name: 'Visible' })).toBeInTheDocument();
     // Click the chevron button to collapse
@@ -170,9 +178,11 @@ describe('GroupSection', () => {
 // CollectionCard
 // -------------------------------------------------------------------
 describe('CollectionCard', () => {
+  const noopCollectionHandlers = { onRename: vi.fn(), onDelete: vi.fn() };
+
   it('renders collection name and tab count badge', () => {
     const collection = makeCollection({ name: 'Sprint Planning', tabs: [makeTab(), makeTab({ id: 't2' })] });
-    render(<CollectionCard collection={collection} />);
+    render(<CollectionCard collection={collection} {...noopCollectionHandlers} />);
     expect(screen.getByRole('heading', { level: 3, name: 'Sprint Planning' })).toBeInTheDocument();
     expect(screen.getByText('2 tabs')).toBeInTheDocument();
   });
@@ -182,7 +192,7 @@ describe('CollectionCard', () => {
       name: 'Expandable',
       tabs: [makeTab({ title: 'My Expanded Tab', url: 'https://expand.com' })],
     });
-    render(<CollectionCard collection={collection} />);
+    render(<CollectionCard collection={collection} {...noopCollectionHandlers} />);
     fireEvent.click(screen.getByRole('article'));
     await waitFor(() =>
       expect(screen.getByText('My Expanded Tab')).toBeInTheDocument(),
@@ -191,7 +201,7 @@ describe('CollectionCard', () => {
 
   it('shows EmptyState for a collection with 0 tabs', () => {
     const collection = makeCollection({ tabs: [] });
-    render(<CollectionCard collection={collection} />);
+    render(<CollectionCard collection={collection} {...noopCollectionHandlers} />);
     expect(screen.getByText('No tabs')).toBeInTheDocument();
   });
 
@@ -200,7 +210,7 @@ describe('CollectionCard', () => {
       makeTab({ id: `t${i}`, title: `Tab ${i}`, url: `https://tab${i}.com` }),
     );
     const collection = makeCollection({ tabs });
-    render(<CollectionCard collection={collection} />);
+    render(<CollectionCard collection={collection} {...noopCollectionHandlers} />);
     // Should show max 4 preview + "+2 more"
     expect(screen.getByText('+ 2 more')).toBeInTheDocument();
   });

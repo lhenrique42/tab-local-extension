@@ -1,9 +1,9 @@
-import { useState } from 'react';
-import { Icon, EmptyState } from '../shared';
-import { useStorage } from '../../lib/hooks/useStorage';
-import { sendToBackground } from '../../lib/messaging/client';
-import { createTab } from '../../lib/chrome/tabs';
-import type { SavedCollection } from '../../lib/storage/schema';
+import { useState } from "react";
+import { Icon, EmptyState } from "../shared";
+import { useStorage } from "../../lib/hooks/useStorage";
+import { sendToBackground } from "../../lib/messaging/client";
+import { createTab } from "../../lib/chrome/tabs";
+import type { SavedCollection } from "../../lib/storage/schema";
 
 /* ------------------------------------------------------------------ */
 /*  Logo                                                                */
@@ -11,7 +11,13 @@ import type { SavedCollection } from '../../lib/storage/schema';
 
 function PopupLogo() {
   return (
-    <svg width="18" height="18" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 64 64"
+      fill="none"
+      aria-hidden="true"
+    >
       <path
         d="M8 22 L8 52 Q8 56 12 56 L52 56 Q56 56 56 52 L56 22 L40 22 L36 16 L8 16 Q8 16 8 22 Z"
         stroke="currentColor"
@@ -28,7 +34,10 @@ function PopupLogo() {
         fill="none"
         opacity="0.8"
       />
-      <path d="M20 34 L20 44 L44 44 L44 34 L36 34 L33.5 31 L20 31 Z" fill="#C7F25C" />
+      <path
+        d="M20 34 L20 44 L44 44 L44 34 L36 34 L33.5 31 L20 31 Z"
+        fill="#C7F25C"
+      />
       <circle cx="32" cy="39" r="1.8" fill="#0B0D11" />
     </svg>
   );
@@ -48,7 +57,11 @@ function RecentCollectionRow({ collection }: RecentCollectionRowProps) {
     <div className="tl-pp-coll" role="listitem">
       <span
         className="tl-pp-coll-dot"
-        style={{ background: collection.chromeGroupColor ? `var(--color-${collection.chromeGroupColor})` : 'var(--fg-tertiary)' }}
+        style={{
+          background: collection.chromeGroupColor
+            ? `var(--color-${collection.chromeGroupColor})`
+            : "var(--fg-tertiary)",
+        }}
         aria-hidden="true"
       />
       <span className="tl-pp-coll-name">{collection.name}</span>
@@ -61,7 +74,10 @@ function RecentCollectionRow({ collection }: RecentCollectionRowProps) {
 /*  Toast banner                                                        */
 /* ------------------------------------------------------------------ */
 
-type BannerState = { kind: 'success'; name: string } | { kind: 'error'; message: string } | null;
+type BannerState =
+  | { kind: "success"; name: string }
+  | { kind: "error"; message: string }
+  | null;
 
 interface BannerProps {
   banner: BannerState;
@@ -69,7 +85,7 @@ interface BannerProps {
 
 function Banner({ banner }: BannerProps) {
   if (!banner) return null;
-  if (banner.kind === 'success') {
+  if (banner.kind === "success") {
     return (
       <div className="tl-pp-saved-banner" role="status" aria-live="polite">
         <Icon name="check" size={14} />
@@ -93,7 +109,7 @@ function Banner({ banner }: BannerProps) {
 
 function buildDefaultName(): string {
   const now = new Date();
-  return `Session ${now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} ${now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
+  return `Session ${now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} ${now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}`;
 }
 
 export function Popup() {
@@ -109,20 +125,23 @@ export function Popup() {
   async function handleSaveSession() {
     setSaving(true);
     const name = buildDefaultName();
-    const response = await sendToBackground({ type: 'SAVE_WINDOW', payload: { collectionName: name } });
+    const response = await sendToBackground({
+      type: "SAVE_WINDOW",
+      payload: { collectionName: name },
+    });
     setSaving(false);
 
     if (response.ok) {
-      setBanner({ kind: 'success', name });
+      setBanner({ kind: "success", name });
     } else {
-      setBanner({ kind: 'error', message: response.error });
+      setBanner({ kind: "error", message: response.error });
     }
 
     setTimeout(() => setBanner(null), 2000);
   }
 
   function handleOpenWorkspace() {
-    void createTab('chrome://newtab');
+    void createTab("chrome://newtab");
     window.close();
   }
 
@@ -150,7 +169,7 @@ export function Popup() {
             aria-busy={saving}
           >
             <Icon name="plus" size={12} />
-            {saving ? 'Saving…' : 'Save current session'}
+            {saving ? "Saving…" : "Save current session"}
           </button>
         </div>
       </div>
@@ -164,7 +183,10 @@ export function Popup() {
         {loading ? (
           <div className="tl-pp-loading" aria-busy="true" />
         ) : recentCollections.length === 0 ? (
-          <EmptyState title="No collections yet" description="Save a session to get started." />
+          <EmptyState
+            title="No collections yet"
+            description="Save a session to get started."
+          />
         ) : (
           <div role="list" aria-label="Recent collections">
             {recentCollections.map((c) => (
@@ -183,7 +205,7 @@ export function Popup() {
         </span>
         <button
           className="tl-btn tl-btn-ghost"
-          style={{ height: 'auto', padding: 0, fontSize: 11 }}
+          style={{ height: "auto", padding: 0, fontSize: 11 }}
           onClick={handleOpenWorkspace}
           aria-label="Open workspace in new tab"
         >

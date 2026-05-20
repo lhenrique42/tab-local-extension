@@ -1,5 +1,7 @@
 import { useState } from "react";
+import { nanoid } from "nanoid";
 import type { StorageRoot } from "../../lib/storage/schema";
+import { storage } from "../../lib/storage/adapter";
 import { Icon } from "../shared";
 import { GroupSection } from "./GroupSection";
 import { LiveTabsSidebar } from "./LiveTabsSidebar";
@@ -12,6 +14,84 @@ interface WorkspaceProps {
 /** Root workspace area: renders all groups with their collection card grids. */
 export function Workspace({ root, loading }: WorkspaceProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  /* ---------------------------------------------------------------- */
+  /*  Mutation helpers — all via storage.patch                         */
+  /* ---------------------------------------------------------------- */
+
+  function handleNewGroup() {
+    const id = nanoid();
+    const now = Date.now();
+    void storage.patch((draft) => {
+      draft.groups[id] = {
+        id,
+        name: 'New Group',
+        color: 'grey',
+        collectionIds: [],
+        createdAt: now,
+        updatedAt: now,
+      };
+    });
+  }
+
+  function handleNewCollection(groupId: string) {
+    const id = nanoid();
+    const now = Date.now();
+    void storage.patch((draft) => {
+      draft.collections[id] = {
+        id,
+        name: 'New Collection',
+        groupId,
+        chromeGroupColor: null,
+        tabs: [],
+        createdAt: now,
+        updatedAt: now,
+      };
+      if (draft.groups[groupId]) {
+        draft.groups[groupId].collectionIds.push(id);
+        draft.groups[groupId].updatedAt = now;
+      }
+    });
+  }
+
+  function handleRenameGroup(id: string, name: string) {
+    void storage.patch((draft) => {
+      if (draft.groups[id]) {
+        draft.groups[id].name = name;
+        draft.groups[id].updatedAt = Date.now();
+      }
+    });
+  }
+
+  function handleDeleteGroup(id: string) {
+    void storage.patch((draft) => {
+      const collectionIds = draft.groups[id]?.collectionIds ?? [];
+      for (const cid of collectionIds) {
+        delete draft.collections[cid];
+      }
+      delete draft.groups[id];
+    });
+  }
+
+  function handleRenameCollection(id: string, name: string) {
+    void storage.patch((draft) => {
+      if (draft.collections[id]) {
+        draft.collections[id].name = name;
+        draft.collections[id].updatedAt = Date.now();
+      }
+    });
+  }
+
+  function handleDeleteCollection(id: string) {
+    void storage.patch((draft) => {
+      const collection = draft.collections[id];
+      if (collection?.groupId && draft.groups[collection.groupId]) {
+        draft.groups[collection.groupId].collectionIds =
+          draft.groups[collection.groupId].collectionIds.filter((cid) => cid !== id);
+      }
+      delete draft.collections[id];
+    });
+  }
 
   if (loading) {
     return (
@@ -40,6 +120,14 @@ export function Workspace({ root, loading }: WorkspaceProps) {
       <main className="tl-workspace">
         <div className="tl-workspace-head">
           <h1 className="tl-workspace-title">Saved</h1>
+          <button
+            className="tl-btn tl-btn-sm tl-btn-secondary"
+            aria-label="New group"
+            onClick={handleNewGroup}
+          >
+            <Icon name="plus" size={12} />
+            New Group
+          </button>
           {!sidebarOpen && (
             <button
               className="tl-btn tl-btn-sm tl-btn-ghost"
@@ -71,6 +159,11 @@ export function Workspace({ root, loading }: WorkspaceProps) {
                   key={group.id}
                   group={group}
                   collections={collections}
+                  onNewCollection={handleNewCollection}
+                  onRenameGroup={handleRenameGroup}
+                  onDeleteGroup={handleDeleteGroup}
+                  onRenameCollection={handleRenameCollection}
+                  onDeleteCollection={handleDeleteCollection}
                 />
               );
             })}
