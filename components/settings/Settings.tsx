@@ -8,7 +8,6 @@ import type { UserSettings } from "../../lib/storage/schema";
 /*  Types                                                               */
 /* ------------------------------------------------------------------ */
 
-type Theme = UserSettings["theme"];
 type RestoreMode = UserSettings["defaultRestoreMode"];
 
 /* ------------------------------------------------------------------ */
@@ -119,12 +118,6 @@ export function Settings() {
     await storage.patch((draft) => fn(draft.settings));
   }
 
-  function handleThemeChange(theme: Theme) {
-    void patchSettings((s) => {
-      s.theme = theme;
-    });
-  }
-
   function handleRestoreModeChange(mode: RestoreMode) {
     void patchSettings((s) => {
       s.defaultRestoreMode = mode;
@@ -159,25 +152,6 @@ export function Settings() {
         />
       ) : (
         <div className="tl-settings__body">
-          {/* Appearance */}
-          <Section label="Appearance">
-            <Row
-              name="Theme"
-              description="Controls the color scheme across all TabLocal surfaces."
-            >
-              <RadioGroup<Theme>
-                name="theme"
-                value={settings.theme}
-                options={[
-                  { value: "dark", label: "Dark" },
-                  { value: "light", label: "Light" },
-                  { value: "system", label: "System" },
-                ]}
-                onChange={handleThemeChange}
-              />
-            </Row>
-          </Section>
-
           {/* Restore */}
           <Section label="Restore">
             <Row

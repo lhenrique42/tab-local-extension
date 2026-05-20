@@ -39,7 +39,7 @@ export interface SavedGroup {
 }
 
 export interface UserSettings {
-  theme: "dark" | "light" | "system";
+  theme: "dark";
   defaultRestoreMode: "discard-background" | "active-all";
   autoGroupByDomainEnabled: boolean;
   nativeGroupSyncEnabled: boolean;
@@ -50,4 +50,5 @@ export interface StorageRoot {
   groups: Record<string, SavedGroup>;
   collections: Record<string, SavedCollection>;
   settings: UserSettings;
+  groupOrder?: string[];
 }

@@ -46,11 +46,8 @@ beforeEach(() => {
 /* ------------------------------------------------------------------ */
 
 describe("Settings", () => {
-  it("renders all four section headings", () => {
+  it("renders all three section headings", () => {
     render(<Settings />);
-    expect(
-      screen.getByRole("heading", { name: /appearance/i }),
-    ).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: /restore/i }),
     ).toBeInTheDocument();
@@ -69,48 +66,6 @@ describe("Settings", () => {
     expect(screen.queryByRole("radiogroup")).not.toBeInTheDocument();
   });
 
-  // ── Theme ──
-
-  it("renders theme radio options: Dark, Light, System", () => {
-    render(<Settings />);
-    expect(screen.getByRole("radio", { name: "Dark" })).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: "Light" })).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: "System" })).toBeInTheDocument();
-  });
-
-  it("checks the current theme radio (dark by default)", () => {
-    render(<Settings />);
-    expect(screen.getByRole("radio", { name: "Dark" })).not.toBeChecked();
-    expect(screen.getByRole("radio", { name: "System" })).toBeChecked();
-  });
-
-  it("checks 'Light' when theme is light", () => {
-    mockUseStorage.mockReturnValue([makeRoot({ theme: "light" }), false]);
-    render(<Settings />);
-    expect(screen.getByRole("radio", { name: "Light" })).toBeChecked();
-  });
-
-  it("calls storage.patch with { theme: 'light' } when Light is selected", async () => {
-    render(<Settings />);
-    await userEvent.click(screen.getByRole("radio", { name: "Light" }));
-    await waitFor(() => expect(mockStoragePatch).toHaveBeenCalledOnce());
-    const patchFn = mockStoragePatch.mock.calls[0][0];
-    const draft = defaultRoot();
-    patchFn(draft);
-    expect(draft.settings.theme).toBe("light");
-  });
-
-  it("calls storage.patch with { theme: 'dark' } when Dark is selected", async () => {
-    mockUseStorage.mockReturnValue([makeRoot({ theme: "light" }), false]);
-    render(<Settings />);
-    await userEvent.click(screen.getByRole("radio", { name: "Dark" }));
-    await waitFor(() => expect(mockStoragePatch).toHaveBeenCalledOnce());
-    const patchFn = mockStoragePatch.mock.calls[0][0];
-    const draft = defaultRoot();
-    patchFn(draft);
-    expect(draft.settings.theme).toBe("dark");
-  });
-
   // ── Restore mode ──
 
   it("renders restore mode radio options", () => {
@@ -125,14 +80,12 @@ describe("Settings", () => {
 
   it("calls storage.patch with correct restore mode when changed", async () => {
     render(<Settings />);
-    await userEvent.click(
-      screen.getByRole("radio", { name: /current window/i }),
-    );
+    await userEvent.click(screen.getByRole("radio", { name: /new window/i }));
     await waitFor(() => expect(mockStoragePatch).toHaveBeenCalledOnce());
     const patchFn = mockStoragePatch.mock.calls[0][0];
     const draft = defaultRoot();
     patchFn(draft);
-    expect(draft.settings.defaultRestoreMode).toBe("active-all");
+    expect(draft.settings.defaultRestoreMode).toBe("discard-background");
   });
 
   // ── nativeGroupSyncEnabled ──

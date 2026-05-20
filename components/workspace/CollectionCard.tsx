@@ -1,18 +1,30 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import type { CSSProperties, KeyboardEvent } from "react";
 import type { SavedCollection, SavedTab } from "../../lib/storage/schema";
 import { CHROME_GROUP_COLOR_HEX } from "../../lib/constants/colors";
 import { EmptyState, Icon, ConfirmDialog } from "../shared";
-import { TabList } from "./TabList";
+import { TabList, Favicon } from "./TabList";
 
 interface CollectionCardProps {
   collection: SavedCollection;
   groupName?: string;
+  groupColor?: string;
   onRename: (id: string, name: string) => void;
   onDelete: (id: string) => void;
-  onAddTab: (collectionId: string, url: string) => void;
+  onAddTab: (
+    collectionId: string,
+    url: string,
+    title?: string,
+    faviconUrl?: string | null,
+  ) => void;
   onRemoveTab: (collectionId: string, tabId: string) => void;
   onDuplicateTab: (collectionId: string, tabId: string) => void;
+  onEditTab?: (
+    collectionId: string,
+    tabId: string,
+    newUrl: string,
+    newTitle: string,
+  ) => void;
   onReorderTabs: (collectionId: string, newTabs: SavedTab[]) => void;
   onRestore: (collectionId: string) => Promise<void>;
 }
@@ -23,15 +35,18 @@ const PREVIEW_LIMIT = 4;
 export function CollectionCard({
   collection,
   groupName,
+  groupColor,
   onRename,
   onDelete,
   onAddTab,
   onRemoveTab,
   onDuplicateTab,
+  onEditTab,
   onReorderTabs,
   onRestore,
 }: CollectionCardProps) {
   const [expanded, setExpanded] = useState(false);
+  const articleRef = useRef<HTMLElement>(null);
   const [renaming, setRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -42,7 +57,20 @@ export function CollectionCard({
   const [addUrl, setAddUrl] = useState("");
   const [addUrlError, setAddUrlError] = useState("");
   const [restoring, setRestoring] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!expanded) return;
+    function handleOutsideClick(e: MouseEvent) {
+      if (!articleRef.current?.contains(e.target as Node)) {
+        setExpanded(false);
+      }
+    }
+    document.addEventListener("pointerdown", handleOutsideClick);
+    return () =>
+      document.removeEventListener("pointerdown", handleOutsideClick);
+  }, [expanded]);
 
   function validateUrl(url: string): boolean {
     return (
@@ -65,7 +93,7 @@ export function CollectionCard({
 
   const barColor = collection.chromeGroupColor
     ? CHROME_GROUP_COLOR_HEX[collection.chromeGroupColor]
-    : "var(--accent)";
+    : (groupColor ?? "var(--accent)");
 
   const preview = collection.tabs.slice(0, PREVIEW_LIMIT);
   const rest = collection.tabs.length - preview.length;
@@ -102,10 +130,38 @@ export function CollectionCard({
   return (
     <>
       <article
-        className={`tl-collection${expanded ? " is-expanded" : ""}`}
+        ref={articleRef}
+        className={`tl-collection${expanded ? " is-expanded" : ""}${isDragOver ? " is-drop-target" : ""}`}
         style={{ "--bar": barColor } as CSSProperties}
         onClick={() => !renaming && setExpanded((v) => !v)}
         aria-expanded={expanded}
+        onDragOver={(e) => {
+          if (e.dataTransfer.types.includes("application/tablocal-tab")) {
+            e.preventDefault();
+            setIsDragOver(true);
+          }
+        }}
+        onDragLeave={(e) => {
+          if (!articleRef.current?.contains(e.relatedTarget as Node)) {
+            setIsDragOver(false);
+          }
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          setIsDragOver(false);
+          const raw = e.dataTransfer.getData("application/tablocal-tab");
+          if (!raw) return;
+          try {
+            const { url, title, faviconUrl } = JSON.parse(raw) as {
+              url: string;
+              title: string;
+              faviconUrl?: string | null;
+            };
+            if (url) onAddTab(collection.id, url, title, faviconUrl ?? null);
+          } catch {
+            // ignore malformed drag data
+          }
+        }}
       >
         <header className="tl-collection-head">
           <div className="tl-collection-head-left">
@@ -215,6 +271,12 @@ export function CollectionCard({
                   tabs={collection.tabs}
                   onRemove={(tabId) => setConfirmRemoveTabId(tabId)}
                   onDuplicate={(tabId) => onDuplicateTab(collection.id, tabId)}
+                  onEdit={
+                    onEditTab
+                      ? (tabId, url, title) =>
+                          onEditTab(collection.id, tabId, url, title)
+                      : undefined
+                  }
                   onReorder={(newTabs) => onReorderTabs(collection.id, newTabs)}
                 />
               )}
@@ -295,13 +357,7 @@ export function CollectionCard({
                 <>
                   {preview.map((tab) => (
                     <div key={tab.id} className="tl-collection-item">
-                      <span
-                        className="tl-favicon-letter"
-                        style={{ width: 12, height: 12, fontSize: 8 }}
-                        aria-hidden="true"
-                      >
-                        {(tab.title[0] ?? "?").toUpperCase()}
-                      </span>
+                      <Favicon tab={tab} size={12} />
                       <span>{tab.title}</span>
                     </div>
                   ))}

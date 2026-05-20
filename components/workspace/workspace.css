@@ -2,6 +2,39 @@
    Tokens come from assets/styles/tokens.css (imported by entrypoint). */
 
 /* =========================================================
+   Settings modal overlay
+   ========================================================= */
+.tl-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: color-mix(in srgb, var(--bg) 60%, transparent);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tl-modal-panel {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-popover);
+  width: min(640px, calc(100vw - 48px));
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
+}
+
+.tl-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 1;
+}
+
+/* =========================================================
    App shell
    ========================================================= */
 .tl-app {
@@ -200,6 +233,8 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+  border-left: 3px solid var(--group-color, var(--border-subtle));
+  padding-left: var(--space-5);
 }
 
 .tl-group-head {
@@ -305,6 +340,8 @@
   flex-direction: column;
   gap: 4px;
   min-width: 0;
+  flex: 1;
+  overflow: hidden;
 }
 .tl-collection-title {
   font: 600 14px/1.25 var(--font-sans);
@@ -441,26 +478,18 @@
   max-width: 30%;
 }
 
-.tl-tab-row-actions {
-  display: flex;
-  gap: 2px;
-  opacity: 0;
-  transition: opacity var(--dur-fast);
-}
-.tl-tab-row:hover .tl-tab-row-actions { opacity: 1; }
 .tl-tab-row-actions button {
   width: 22px;
   height: 22px;
   border: none;
   background: transparent;
-  color: var(--fg-tertiary);
+  color: var(--fg-secondary);
   border-radius: var(--radius-sm);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
-.tl-tab-row-actions button:hover { background: var(--surface-higher); color: var(--fg); }
 
 /* =========================================================
    Empty states (workspace-specific variants)
@@ -687,15 +716,10 @@
   gap: 2px;
   margin-left: auto;
   flex-shrink: 0;
-  opacity: 0;
-  transition: opacity 0.1s;
-}
-.tl-tab-row:hover .tl-tab-row-actions,
-.tl-tab-row:focus-within .tl-tab-row-actions {
   opacity: 1;
 }
 .tl-btn-xs {
-  padding: 2px 4px;
+  padding: 2px 4px !important;
   font-size: 10px;
   line-height: 1;
 }
@@ -705,6 +729,29 @@
 .tl-btn-danger-ghost:hover,
 .tl-btn-danger-ghost:focus-visible {
   background: color-mix(in srgb, var(--danger, #e05c5c) 12%, transparent);
+}
+
+.tl-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.tl-input-icon {
+  position: absolute;
+  right: 10px;
+  width: auto;
+  height: 16px;
+  color: var(--fg-secondary, #888);
+  pointer-events: none;
+}
+
+
+.tl-add-tab-input.with-icon {
+  width: 100%;
+  padding-right: 34px !important;
+  padding-left: 12px;
+  box-sizing: border-box;
 }
 
 /* =========================================================
@@ -814,3 +861,66 @@
   background: var(--surface-2, var(--bg-secondary));
   border-radius: var(--radius-sm);
 }
+
+/* =========================================================
+   Tab row inline edit form
+   ========================================================= */
+.tl-tab-row-edit {
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--surface-raised);
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.tl-tab-row-edit:first-child { border-top: none; }
+.tl-tab-row-edit-input {
+  height: 26px;
+  padding: 0 8px;
+  background: var(--bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--fg);
+  font: 400 12px/1 var(--font-sans);
+  outline: none;
+  width: 100%;
+}
+.tl-tab-row-edit-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+.tl-tab-row-edit-actions {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+/* =========================================================
+   Group drag handle
+   ========================================================= */
+.tl-group-drag-handle {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity var(--dur-fast);
+  cursor: grab;
+}
+.tl-group-drag-handle:active { cursor: grabbing; }
+.tl-group-head:hover .tl-group-drag-handle { opacity: 1; }
+
+/* =========================================================
+   Collection drop target (sidebar drag)
+   ========================================================= */
+.tl-collection.is-drop-target {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* =========================================================
+   Draggable sidebar tab rows
+   ========================================================= */
+.tl-side-row[draggable="true"] { cursor: grab; }
+.tl-side-row[draggable="true"]:active { cursor: grabbing; }
+.tl-side-row[draggable="true"] .tl-grip { opacity: 0.6; }

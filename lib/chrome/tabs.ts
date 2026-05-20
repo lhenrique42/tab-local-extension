@@ -64,9 +64,10 @@ export async function discardTab(tabId: number): Promise<void> {
  */
 export async function createWindow(
   url: string,
+  focused = false,
 ): Promise<chrome.windows.Window | null> {
   try {
-    return (await chrome.windows.create({ url, focused: true })) ?? null;
+    return (await chrome.windows.create({ url, focused })) ?? null;
   } catch (err) {
     console.error("[tabs] createWindow failed:", err);
     return null;

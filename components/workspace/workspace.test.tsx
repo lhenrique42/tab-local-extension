@@ -101,9 +101,13 @@ describe("useStorage", () => {
   });
 
   it("returns defaultRoot() when storage is empty", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(1000);
     const { result } = renderHook(() => useStorage());
-    await waitFor(() => expect(result.current[1]).toBe(false));
+    await act(async () => { await vi.runAllTimersAsync(); });
+    expect(result.current[1]).toBe(false);
     expect(result.current[0]).toEqual(defaultRoot());
+    vi.useRealTimers();
   });
 
   it("updates state when storage changes externally", async () => {
@@ -126,7 +130,8 @@ describe("useStorage", () => {
 // -------------------------------------------------------------------
 describe("Workspace", () => {
   it("renders empty state when root has zero groups", () => {
-    render(<Workspace root={defaultRoot()} loading={false} />);
+    const emptyRoot: StorageRoot = { ...defaultRoot(), groups: {}, groupOrder: [] };
+    render(<Workspace root={emptyRoot} loading={false} />);
     expect(screen.getByText("No collections yet")).toBeInTheDocument();
   });
 
@@ -150,7 +155,7 @@ describe("Workspace", () => {
 
   it("renders the header with logo", () => {
     render(<Workspace root={defaultRoot()} loading={false} />);
-    expect(screen.getByRole("banner")).toBeInTheDocument();
+    expect(screen.getAllByRole("banner")[0]).toBeInTheDocument();
     expect(screen.getByLabelText("TabLocal")).toBeInTheDocument();
   });
 

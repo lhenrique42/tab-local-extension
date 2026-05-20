@@ -2,11 +2,11 @@ import { nanoid } from "nanoid";
 import type { StorageAdapter } from "../storage/adapter";
 import type { SavedTab, ChromeGroupColor } from "../storage/schema";
 import type { BackgroundMessage, BackgroundResponse } from "./types";
+import { SESSIONS_GROUP_ID } from "../storage/defaults";
 import {
   getCurrentWindowTabs,
   createTab,
   createWindow,
-  discardTab,
 } from "../chrome/tabs";
 import { queryTabGroups } from "../chrome/tabGroups";
 
@@ -36,15 +36,28 @@ export const handleSaveWindow: MessageHandler<
 
     const collectionId = nanoid();
     await storageAdapter.patch((draft) => {
+      // Always save to the dedicated sessions group (guaranteed to exist via migrations)
+      let groupId: string = SESSIONS_GROUP_ID;
+      if (!draft.groups[groupId]) {
+        draft.groups[groupId] = {
+          id: groupId,
+          name: "Saved Sessions",
+          color: "blue",
+          collectionIds: [],
+          createdAt: now,
+          updatedAt: now,
+        };
+      }
       draft.collections[collectionId] = {
         id: collectionId,
         name: msg.payload.collectionName,
-        groupId: null,
+        groupId,
         chromeGroupColor: null,
         tabs: savedTabs,
         createdAt: now,
         updatedAt: now,
       };
+      draft.groups[groupId].collectionIds.unshift(collectionId);
     });
 
     return { ok: true, data: { collectionId, tabCount: savedTabs.length } };
@@ -78,8 +91,6 @@ export const handleRestoreCollection: MessageHandler<
       };
     }
 
-    const discardBackground =
-      root.settings.defaultRestoreMode === "discard-background";
     const createdTabIds: number[] = [];
 
     if (msg.payload.newWindow) {
@@ -89,16 +100,13 @@ export const handleRestoreCollection: MessageHandler<
       const firstTab = win?.tabs?.[0];
       if (firstTab?.id != null) createdTabIds.push(firstTab.id);
 
-      // Open remaining tabs in that window as inactive
+      // Open remaining tabs in that window as inactive (background)
       for (const tab of tabs.slice(1)) {
         const created = windowId
           ? await chrome.tabs.create({ url: tab.url, windowId, active: false })
           : await createTab(tab.url, false);
         if (created?.id != null) {
           createdTabIds.push(created.id);
-          if (discardBackground) {
-            await discardTab(created.id);
-          }
         }
       }
     } else {
@@ -106,14 +114,11 @@ export const handleRestoreCollection: MessageHandler<
       const firstCreated = await createTab(tabs[0].url, true);
       if (firstCreated?.id != null) createdTabIds.push(firstCreated.id);
 
-      // Open remaining as inactive
+      // Open remaining as inactive background tabs
       for (const tab of tabs.slice(1)) {
         const created = await createTab(tab.url, false);
         if (created?.id != null) {
           createdTabIds.push(created.id);
-          if (discardBackground) {
-            await discardTab(created.id);
-          }
         }
       }
     }

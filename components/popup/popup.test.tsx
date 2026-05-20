@@ -163,12 +163,10 @@ describe("Popup", () => {
     };
     mockUseStorage.mockReturnValue([makeRoot(collections), false]);
 
-    render(<Popup />);
+    const { container } = render(<Popup />);
 
-    const rows = screen.getAllByRole("listitem");
-    const names = rows.map(
-      (r) => r.querySelector(".tl-pp-coll-name")?.textContent,
-    );
+    const rows = Array.from(container.querySelectorAll(".tl-pp-coll"));
+    const names = rows.map((r) => r.querySelector(".tl-pp-coll-name")?.textContent);
     expect(names).toEqual(["Newest", "Middle", "Oldest"]);
   });
 
@@ -329,16 +327,16 @@ describe("Popup — Open Settings link", () => {
     ).toBeInTheDocument();
   });
 
-  it("opens settings page and closes popup on click", async () => {
+  it("opens settings in-popup (shows settings heading, not a new tab)", async () => {
     render(<Popup />);
     await userEvent.click(
       screen.getByRole("button", { name: /open settings/i }),
     );
     await waitFor(() =>
-      expect(mockCreateTab).toHaveBeenCalledWith(
-        expect.stringContaining("settings.html"),
-      ),
+      expect(screen.getByRole("heading", { name: "Settings" })).toBeInTheDocument(),
     );
-    expect(window.close).toHaveBeenCalled();
+    expect(mockCreateTab).not.toHaveBeenCalledWith(
+      expect.stringContaining("settings.html"),
+    );
   });
 });

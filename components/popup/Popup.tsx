@@ -7,6 +7,9 @@ import type { SavedCollection } from "../../lib/storage/schema";
 import type { TabInfo } from "../../lib/chrome/tabs";
 import { storage } from "../../lib/storage/adapter";
 import { nanoid } from "nanoid";
+import { Settings } from "../settings";
+import { SESSIONS_GROUP_ID } from "../../lib/storage/defaults";
+import { CHROME_GROUP_COLOR_HEX } from "../../lib/constants/colors";
 
 /* ------------------------------------------------------------------ */
 /*  Logo                                                                */
@@ -61,8 +64,14 @@ function PageCard({ tab }: { tab: TabInfo }) {
   const letter = (tab.title[0] ?? hostname[0] ?? "?").toUpperCase();
 
   const LETTER_COLORS = [
-    "#4A90E2", "#E89A4A", "#5CB87E", "#E25C5C",
-    "#9B6BE2", "#4DBDBD", "#F5C242", "#E26AA5",
+    "#4A90E2",
+    "#E89A4A",
+    "#5CB87E",
+    "#E25C5C",
+    "#9B6BE2",
+    "#4DBDBD",
+    "#F5C242",
+    "#E26AA5",
   ];
   const color = LETTER_COLORS[letter.charCodeAt(0) % LETTER_COLORS.length];
 
@@ -76,7 +85,9 @@ function PageCard({ tab }: { tab: TabInfo }) {
         {letter}
       </span>
       <div className="tl-pp-now-meta">
-        <div className="tl-pp-now-title" title={tab.title}>{tab.title}</div>
+        <div className="tl-pp-now-title" title={tab.title}>
+          {tab.title}
+        </div>
         <div className="tl-pp-now-url">{hostname}</div>
       </div>
     </div>
@@ -87,17 +98,31 @@ function PageCard({ tab }: { tab: TabInfo }) {
 /*  Recent collection row                                               */
 /* ------------------------------------------------------------------ */
 
-function RecentCollectionRow({ collection }: { collection: SavedCollection }) {
+function RecentCollectionRow({
+  collection,
+  groupColor,
+  onClick,
+}: {
+  collection: SavedCollection;
+  groupColor: string | null;
+  onClick?: () => void;
+}) {
   const tabCount = collection.tabs.length;
+  const dotColor = collection.chromeGroupColor
+    ? CHROME_GROUP_COLOR_HEX[collection.chromeGroupColor]
+    : (groupColor ?? "var(--fg-tertiary)");
   return (
-    <div className="tl-pp-coll" role="listitem">
+    <div
+      className="tl-pp-coll"
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(e) => e.key === "Enter" && onClick?.()}
+      aria-label={`Add current tab to ${collection.name}`}
+    >
       <span
         className="tl-pp-coll-dot"
-        style={{
-          background: collection.chromeGroupColor
-            ? `var(--color-${collection.chromeGroupColor})`
-            : "var(--fg-tertiary)",
-        }}
+        style={{ background: dotColor }}
         aria-hidden="true"
       />
       <span className="tl-pp-coll-name">{collection.name}</span>
@@ -154,6 +179,7 @@ export function Popup() {
   const [banner, setBanner] = useState<BannerState>(null);
   const [windowTabs, setWindowTabs] = useState<TabInfo[]>([]);
   const [newCollName, setNewCollName] = useState("");
+  const [showSettings, setShowSettings] = useState(false);
   const newCollInputRef = useRef<HTMLInputElement>(null);
 
   const autoGroupEnabled = root.settings.autoGroupByDomainEnabled;
@@ -166,10 +192,19 @@ export function Popup() {
   const activeTab = windowTabs.find((t) => t.active) ?? null;
   const tabCount = windowTabs.length;
 
-  // Sort collections by createdAt descending, take 3
-  const recentCollections: SavedCollection[] = Object.values(root.collections)
+  // Sort collections by createdAt descending, take 3, with resolved group color
+  const recentCollections = Object.values(root.collections)
     .sort((a, b) => b.createdAt - a.createdAt)
-    .slice(0, 3);
+    .slice(0, 3)
+    .map((c) => {
+      const group = c.groupId ? root.groups[c.groupId] : null;
+      const groupColor = group?.color
+        ? (CHROME_GROUP_COLOR_HEX[
+            group.color as keyof typeof CHROME_GROUP_COLOR_HEX
+          ] ?? null)
+        : null;
+      return { collection: c, groupColor };
+    });
 
   function showBanner(next: BannerState) {
     setBanner(next);
@@ -198,32 +233,53 @@ export function Popup() {
     const id = nanoid();
     const now = Date.now();
     await storage.patch((draft) => {
-      const firstGroupId = Object.keys(draft.groups)[0] ?? null;
+      const groupId = draft.groups[SESSIONS_GROUP_ID]
+        ? SESSIONS_GROUP_ID
+        : (Object.keys(draft.groups)[0] ?? null);
       draft.collections[id] = {
         id,
         name: trimmed,
-        groupId: firstGroupId,
+        groupId,
         chromeGroupColor: null,
         tabs: [],
         createdAt: now,
         updatedAt: now,
       };
-      if (firstGroupId) {
-        draft.groups[firstGroupId].collectionIds.push(id);
+      if (groupId && draft.groups[groupId]) {
+        draft.groups[groupId].collectionIds.push(id);
       }
     });
     setNewCollName("");
     showBanner({ kind: "success", name: trimmed });
   }
 
+  async function handleAddToCollection(collectionId: string) {
+    if (!activeTab) return;
+    const id = nanoid();
+    const now = Date.now();
+    await storage.patch((draft) => {
+      if (draft.collections[collectionId]) {
+        draft.collections[collectionId].tabs.push({
+          id,
+          url: activeTab.url,
+          title: activeTab.title,
+          faviconUrl: activeTab.faviconUrl,
+          addedAt: now,
+        });
+        draft.collections[collectionId].updatedAt = now;
+      }
+    });
+    const collName = root.collections[collectionId]?.name ?? "collection";
+    showBanner({ kind: "success", name: collName });
+  }
+
   function handleOpenWorkspace() {
-    void createTab("chrome://newtab");
+    void createTab("chrome://newtab", true);
     window.close();
   }
 
   function handleOpenSettings() {
-    void createTab(chrome.runtime.getURL("settings.html"));
-    window.close();
+    setShowSettings(true);
   }
 
   async function handleAutoGroup() {
@@ -237,6 +293,43 @@ export function Popup() {
     if (!response.ok) {
       showBanner({ kind: "error", message: response.error });
     }
+  }
+
+  if (showSettings) {
+    return (
+      <div
+        className="tl-popup tl-popup--settings"
+        role="dialog"
+        aria-label="TabLocal Settings"
+      >
+        <header className="tl-pp-head">
+          <button
+            className="tl-btn tl-btn-ghost tl-btn-icon"
+            onClick={() => setShowSettings(false)}
+            aria-label="Back to popup"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+              style={{ transform: "rotate(90deg)" }}
+            >
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+          </button>
+          <span className="tl-pp-head-title">Settings</span>
+        </header>
+        <div style={{ overflowY: "auto", flex: 1 }}>
+          <Settings />
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -292,12 +385,6 @@ export function Popup() {
       {/* Recent collections section */}
       <div className="tl-pp-section">
         <span className="tl-pp-section-label">Or add to…</span>
-        <button
-          className="tl-pp-section-link"
-          onClick={handleOpenWorkspace}
-        >
-          All ↗
-        </button>
       </div>
 
       <div className="tl-pp-list">
@@ -310,8 +397,13 @@ export function Popup() {
           />
         ) : (
           <div role="list" aria-label="Recent collections">
-            {recentCollections.map((c) => (
-              <RecentCollectionRow key={c.id} collection={c} />
+            {recentCollections.map(({ collection: c, groupColor }) => (
+              <RecentCollectionRow
+                key={c.id}
+                collection={c}
+                groupColor={groupColor}
+                onClick={() => void handleAddToCollection(c.id)}
+              />
             ))}
           </div>
         )}
@@ -340,7 +432,8 @@ export function Popup() {
       <footer className="tl-pp-foot">
         <span className="tl-pp-foot-kbd">
           <kbd>⌘</kbd>
-          <kbd>D</kbd>
+          <kbd>⇧</kbd>
+          <kbd>S</kbd>
           <span style={{ marginLeft: 6 }}>quick save</span>
         </span>
         <button

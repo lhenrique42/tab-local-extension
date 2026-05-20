@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { CSSProperties, KeyboardEvent } from "react";
+import type { CSSProperties, HTMLAttributes, KeyboardEvent } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -32,14 +32,16 @@ interface GroupSectionProps {
   group: SavedGroup;
   collections: SavedCollection[];
   defaultOpen?: boolean;
+  dragHandleProps?: HTMLAttributes<HTMLButtonElement>;
   onNewCollection: (groupId: string) => void;
   onRenameGroup: (id: string, name: string) => void;
   onDeleteGroup: (id: string) => void;
   onRenameCollection: (id: string, name: string) => void;
   onDeleteCollection: (id: string) => void;
-  onAddTab: (collectionId: string, url: string) => void;
+  onAddTab: (collectionId: string, url: string, title?: string, faviconUrl?: string | null) => void;
   onRemoveTab: (collectionId: string, tabId: string) => void;
   onDuplicateTab: (collectionId: string, tabId: string) => void;
+  onEditTab?: (collectionId: string, tabId: string, newUrl: string, newTitle: string) => void;
   onReorderCollections: (groupId: string, newIds: string[]) => void;
   onReorderTabs: (collectionId: string, newTabs: SavedTab[]) => void;
   onRestore: (collectionId: string) => Promise<void>;
@@ -52,12 +54,14 @@ interface GroupSectionProps {
 interface SortableCollectionCardProps {
   collection: SavedCollection;
   groupName: string;
+  groupColor: string;
   isDragging?: boolean;
   onRename: (id: string, name: string) => void;
   onDelete: (id: string) => void;
-  onAddTab: (collectionId: string, url: string) => void;
+  onAddTab: (collectionId: string, url: string, title?: string, faviconUrl?: string | null) => void;
   onRemoveTab: (collectionId: string, tabId: string) => void;
   onDuplicateTab: (collectionId: string, tabId: string) => void;
+  onEditTab?: (collectionId: string, tabId: string, newUrl: string, newTitle: string) => void;
   onReorderTabs: (collectionId: string, newTabs: SavedTab[]) => void;
   onRestore: (collectionId: string) => Promise<void>;
 }
@@ -65,7 +69,9 @@ interface SortableCollectionCardProps {
 function SortableCollectionCard({
   collection,
   groupName,
+  groupColor,
   isDragging = false,
+  onEditTab,
   ...cardProps
 }: SortableCollectionCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition } =
@@ -88,7 +94,7 @@ function SortableCollectionCard({
       >
         <Icon name="grip" size={12} aria-hidden />
       </button>
-      <CollectionCard collection={collection} groupName={groupName} {...cardProps} />
+      <CollectionCard collection={collection} groupName={groupName} groupColor={groupColor} onEditTab={onEditTab} {...cardProps} />
     </div>
   );
 }
@@ -98,6 +104,7 @@ export function GroupSection({
   group,
   collections,
   defaultOpen = true,
+  dragHandleProps,
   onNewCollection,
   onRenameGroup,
   onDeleteGroup,
@@ -106,6 +113,7 @@ export function GroupSection({
   onAddTab,
   onRemoveTab,
   onDuplicateTab,
+  onEditTab,
   onReorderCollections,
   onReorderTabs,
   onRestore,
@@ -172,12 +180,26 @@ export function GroupSection({
 
   return (
     <>
-      <section className={`tl-group${open ? "" : " is-collapsed"}`}>
+      <section
+        className={`tl-group${open ? "" : " is-collapsed"}`}
+        style={{ "--group-color": dotColor } as CSSProperties}
+      >
         <header
           className="tl-group-head"
           onClick={() => !renaming && setOpen((v) => !v)}
           aria-expanded={open}
         >
+          {dragHandleProps && (
+            <button
+              className="tl-drag-handle tl-group-drag-handle"
+              aria-label="Drag to reorder group"
+              title="Drag to reorder"
+              onClick={(e) => e.stopPropagation()}
+              {...dragHandleProps}
+            >
+              <Icon name="grip" size={12} />
+            </button>
+          )}
           <button
             className="tl-group-chevron"
             aria-label={open ? "Collapse group" : "Expand group"}
@@ -290,12 +312,14 @@ export function GroupSection({
                       key={c.id}
                       collection={c}
                       groupName={group.name}
+                      groupColor={dotColor}
                       isDragging={activeCollectionId === c.id}
                       onRename={onRenameCollection}
                       onDelete={onDeleteCollection}
                       onAddTab={onAddTab}
                       onRemoveTab={onRemoveTab}
                       onDuplicateTab={onDuplicateTab}
+                      onEditTab={onEditTab}
                       onReorderTabs={onReorderTabs}
                       onRestore={onRestore}
                     />

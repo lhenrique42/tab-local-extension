@@ -1,6 +1,5 @@
 import type {} from "react";
 import { Icon } from "../shared";
-import type { UserSettings } from "../../lib/storage/schema";
 
 function LogoMark() {
   return (
@@ -19,10 +18,8 @@ export interface HeaderProps {
   totalTabs: number;
   query: string;
   onQueryChange: (q: string) => void;
-  theme: UserSettings["theme"];
   onSaveSession: () => void;
   saving: boolean;
-  onToggleTheme: () => void;
   onOpenSettings: () => void;
 }
 
@@ -32,10 +29,8 @@ export function Header({
   totalTabs,
   query,
   onQueryChange,
-  theme,
   onSaveSession,
   saving,
-  onToggleTheme,
   onOpenSettings,
 }: HeaderProps) {
   return (
@@ -88,14 +83,6 @@ export function Header({
           <Icon name="save" size={14} aria-hidden />
           {saving ? "Saving…" : "Save current session"}
           <span className="tl-btn-shortcut" aria-hidden="true">⌘⇧S</span>
-        </button>
-
-        <button
-          className="tl-btn tl-btn-ghost tl-btn-icon"
-          onClick={onToggleTheme}
-          aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
-        >
-          <Icon name={theme === "dark" ? "sun" : "moon"} size={16} aria-hidden />
         </button>
 
         <button

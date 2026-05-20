@@ -95,7 +95,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.tl-pp-now-actions { display: flex; gap: 6px; }
+.tl-pp-now-actions { display: flex; flex-direction: column; gap: 6px; }
 
 /* Section label row */
 .tl-pp-section {
@@ -222,6 +222,16 @@
   border-color: rgba(239, 68, 68, 0.35);
 }
 .tl-pp-saved-banner--error svg { color: #ef4444; }
+
+/* Settings panel inside popup — override full-page layout */
+.tl-popup--settings .tl-settings { min-height: 0; }
+.tl-popup--settings .tl-settings__header { display: none; }
+.tl-popup--settings .tl-settings__body {
+  padding: 12px 14px;
+  max-width: none;
+  gap: 16px;
+}
+.tl-popup--settings .tl-settings__row { flex-direction: column; gap: 8px; }
 
 /* Footer */
 .tl-pp-foot {

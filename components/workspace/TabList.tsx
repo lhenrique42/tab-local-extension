@@ -1,3 +1,4 @@
+import React from "react";
 import {
   DndContext,
   DragOverlay,
@@ -17,7 +18,12 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useState, type CSSProperties, type HTMLAttributes } from "react";
+import {
+  useState,
+  useRef,
+  type CSSProperties,
+  type HTMLAttributes,
+} from "react";
 import type { SavedTab } from "../../lib/storage/schema";
 import { Icon } from "../shared";
 
@@ -26,8 +32,23 @@ interface FaviconProps {
   size: number;
 }
 
+const LETTER_COLORS = [
+  "#4A90E2",
+  "#E89A4A",
+  "#5CB87E",
+  "#E25C5C",
+  "#9B6BE2",
+  "#4DBDBD",
+  "#F5C242",
+  "#E26AA5",
+];
+
+function getLetterColor(char: string): string {
+  return LETTER_COLORS[char.charCodeAt(0) % LETTER_COLORS.length];
+}
+
 /** Renders the tab favicon image, falling back to a colored letter tile. */
-function Favicon({ tab, size }: FaviconProps) {
+export function Favicon({ tab, size }: FaviconProps) {
   const hostname = (() => {
     try {
       return new URL(tab.url).hostname;
@@ -36,12 +57,19 @@ function Favicon({ tab, size }: FaviconProps) {
     }
   })();
   const letter = (tab.title[0] ?? hostname[0] ?? "?").toUpperCase();
+  const letterBg = getLetterColor(letter);
+  // Prefer saved faviconUrl; fall back to Google S2 service for any http/https URL
+  const imgSrc =
+    tab.faviconUrl ??
+    (hostname
+      ? `https://www.google.com/s2/favicons?domain=${hostname}&sz=${size * 2}`
+      : null);
 
-  if (tab.faviconUrl) {
+  if (imgSrc) {
     return (
       <>
         <img
-          src={tab.faviconUrl}
+          src={imgSrc}
           alt=""
           width={size}
           height={size}
@@ -59,6 +87,7 @@ function Favicon({ tab, size }: FaviconProps) {
             width: size,
             height: size,
             fontSize: Math.max(8, size * 0.65),
+            background: letterBg,
             display: "none",
           }}
           aria-hidden="true"
@@ -72,7 +101,12 @@ function Favicon({ tab, size }: FaviconProps) {
   return (
     <span
       className="tl-favicon-letter"
-      style={{ width: size, height: size, fontSize: Math.max(8, size * 0.65) }}
+      style={{
+        width: size,
+        height: size,
+        fontSize: Math.max(8, size * 0.65),
+        background: letterBg,
+      }}
       aria-hidden="true"
     >
       {letter}
@@ -88,6 +122,7 @@ interface TabRowContentProps {
   tab: SavedTab;
   onRemove?: (tabId: string) => void;
   onDuplicate?: (tabId: string) => void;
+  onStartEdit?: () => void;
   isDragging?: boolean;
   dragHandleProps?: HTMLAttributes<HTMLButtonElement>;
 }
@@ -96,10 +131,11 @@ function TabRowContent({
   tab,
   onRemove,
   onDuplicate,
+  onStartEdit,
   isDragging,
   dragHandleProps,
 }: TabRowContentProps) {
-  const hasActions = Boolean(onRemove ?? onDuplicate);
+  const hasActions = Boolean(onRemove ?? onDuplicate ?? onStartEdit);
   return (
     <div
       className={`tl-tab-row is-dense${isDragging ? " is-dragging" : ""}`}
@@ -130,6 +166,33 @@ function TabRowContent({
       </span>
       {hasActions && (
         <div className="tl-tab-row-actions">
+          {onStartEdit && (
+            <button
+              className="tl-btn tl-btn-xs tl-btn-ghost"
+              aria-label={`Edit tab ${tab.title}`}
+              title="Edit URL"
+              onClick={(e) => {
+                e.stopPropagation();
+                onStartEdit();
+              }}
+            >
+              <svg
+                width="11"
+                height="11"
+                viewBox="0 0 14 14"
+                fill="none"
+                aria-hidden="true"
+              >
+                <path
+                  d="M9.5 2.5L11.5 4.5L5 11H3V9L9.5 2.5Z"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+          )}
           {onDuplicate && (
             <button
               className="tl-btn tl-btn-xs tl-btn-ghost"
@@ -206,9 +269,20 @@ interface SortableTabRowProps {
   tab: SavedTab;
   onRemove?: (tabId: string) => void;
   onDuplicate?: (tabId: string) => void;
+  onEdit?: (tabId: string, newUrl: string, newTitle: string) => void;
 }
 
-function SortableTabRow({ tab, onRemove, onDuplicate }: SortableTabRowProps) {
+function SortableTabRow({
+  tab,
+  onRemove,
+  onDuplicate,
+  onEdit,
+}: SortableTabRowProps) {
+  const [editing, setEditing] = useState(false);
+  const [editUrl, setEditUrl] = useState("");
+  const [editTitle, setEditTitle] = useState("");
+  const urlInputRef = useRef<HTMLInputElement>(null);
+
   const {
     attributes,
     listeners,
@@ -224,12 +298,107 @@ function SortableTabRow({ tab, onRemove, onDuplicate }: SortableTabRowProps) {
     opacity: isDragging ? 0.4 : 1,
   };
 
+  function startEdit() {
+    setEditUrl(tab.url);
+    setEditTitle(tab.title);
+    setEditing(true);
+    setTimeout(() => urlInputRef.current?.focus(), 0);
+  }
+
+  function commitEdit() {
+    const trimmedUrl = editUrl.trim();
+    if (trimmedUrl) {
+      onEdit?.(tab.id, trimmedUrl, editTitle.trim() || trimmedUrl);
+    }
+    setEditing(false);
+  }
+
+  function handleEditKey(e: React.KeyboardEvent) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      commitEdit();
+    }
+    if (e.key === "Escape") setEditing(false);
+  }
+
+  if (editing) {
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        className="tl-tab-row-edit"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="tl-input-wrapper">
+          <input
+            ref={urlInputRef}
+            className="tl-tab-row-edit-input"
+            value={editUrl}
+            onChange={(e) => setEditUrl(e.target.value)}
+            onKeyDown={handleEditKey}
+            placeholder="https://example.com"
+          />
+          <svg
+            className="tl-input-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+          </svg>
+        </div>
+        <div className="tl-input-wrapper">
+          <input
+            className="tl-tab-row-edit-input"
+            value={editTitle}
+            onChange={(e) => setEditTitle(e.target.value)}
+            onKeyDown={handleEditKey}
+            placeholder="Title"
+          />
+          <svg
+            className="tl-input-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+            <line x1="7" y1="7" x2="7.01" y2="7"></line>
+          </svg>
+        </div>
+        <div className="tl-tab-row-edit-actions">
+          <button
+            className="tl-btn tl-btn-xs tl-btn-primary"
+            onClick={commitEdit}
+          >
+            Save
+          </button>
+          <button
+            className="tl-btn tl-btn-xs tl-btn-ghost"
+            onClick={() => setEditing(false)}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div ref={setNodeRef} style={style}>
       <TabRowContent
         tab={tab}
         onRemove={onRemove}
         onDuplicate={onDuplicate}
+        onStartEdit={onEdit ? startEdit : undefined}
         dragHandleProps={
           { ...attributes, ...listeners } as HTMLAttributes<HTMLButtonElement>
         }
@@ -246,6 +415,7 @@ interface TabListProps {
   tabs: SavedTab[];
   onRemove?: (tabId: string) => void;
   onDuplicate?: (tabId: string) => void;
+  onEdit?: (tabId: string, newUrl: string, newTitle: string) => void;
   onReorder?: (newOrder: SavedTab[]) => void;
 }
 
@@ -254,6 +424,7 @@ export function TabList({
   tabs,
   onRemove,
   onDuplicate,
+  onEdit,
   onReorder,
 }: TabListProps) {
   const [activeTab, setActiveTab] = useState<SavedTab | null>(null);
@@ -304,6 +475,7 @@ export function TabList({
               tab={tab}
               onRemove={onRemove}
               onDuplicate={onDuplicate}
+              onEdit={onEdit}
             />
           ))}
         </div>

@@ -254,7 +254,7 @@ describe("handleRestoreCollection", () => {
     expect(calls[2][0]).toMatchObject({ url: "https://c.com", active: false });
   });
 
-  it("calls chrome.tabs.discard for background tabs when discard-background mode", async () => {
+  it("opens background tabs as inactive in discard-background mode without calling discard", async () => {
     const adapter = makeStorage();
     const root = defaultRoot();
     root.settings.defaultRestoreMode = "discard-background";
@@ -264,7 +264,7 @@ describe("handleRestoreCollection", () => {
     ]);
     await fakeBrowser.storage.local.set({ __tablocal_root: root });
 
-    vi.spyOn(fakeBrowser.tabs, "create").mockResolvedValue({
+    const createSpy = vi.spyOn(fakeBrowser.tabs, "create").mockResolvedValue({
       id: 42,
     } as chrome.tabs.Tab);
     const discardSpy = vi
@@ -280,9 +280,9 @@ describe("handleRestoreCollection", () => {
       adapter,
     );
 
-    // Only the second tab (inactive) should be discarded
-    expect(discardSpy).toHaveBeenCalledTimes(1);
-    expect(discardSpy).toHaveBeenCalledWith(42);
+    // Second tab should be created inactive — discard must NOT be called (would abort navigation)
+    expect(createSpy).toHaveBeenCalledWith(expect.objectContaining({ active: false }));
+    expect(discardSpy).not.toHaveBeenCalled();
   });
 
   it("does not discard tabs in active-all mode", async () => {

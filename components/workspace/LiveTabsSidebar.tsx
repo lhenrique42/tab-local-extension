@@ -26,6 +26,14 @@ function SidebarTabRow({ tab }: SidebarTabRowProps) {
       className={`tl-side-row${tab.active ? " is-active" : ""}`}
       title={tab.title}
       role="listitem"
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData(
+          "application/tablocal-tab",
+          JSON.stringify({ url: tab.url, title: tab.title, faviconUrl: tab.faviconUrl }),
+        );
+        e.dataTransfer.effectAllowed = "copy";
+      }}
     >
       <span className="tl-grip" aria-hidden="true">
         <Icon name="grip" size={14} />

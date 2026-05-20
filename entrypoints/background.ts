@@ -12,6 +12,18 @@ export default defineBackground(() => {
   // Register Chrome tab group sync listener (no-op if API unavailable)
   registerNativeGroupSyncListener(storage);
 
+  chrome.commands.onCommand.addListener((command) => {
+    if (command === "save-window") {
+      const now = new Date();
+      const name = `Session ${now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} ${now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}`;
+      void handleSaveWindow(
+        { type: "SAVE_WINDOW", payload: { collectionName: name } },
+        {} as chrome.runtime.MessageSender,
+        storage,
+      );
+    }
+  });
+
   chrome.runtime.onMessage.addListener(
     (
       message: BackgroundMessage,
