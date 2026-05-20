@@ -22,11 +22,11 @@ interface SectionProps {
 
 function Section({ label, children }: SectionProps) {
   return (
-    <section className="tl-settings__section" aria-labelledby={`section-${label}`}>
-      <h2
-        id={`section-${label}`}
-        className="tl-settings__section-label"
-      >
+    <section
+      className="tl-settings__section"
+      aria-labelledby={`section-${label}`}
+    >
+      <h2 id={`section-${label}`} className="tl-settings__section-label">
         {label}
       </h2>
       {children}
@@ -188,7 +188,10 @@ export function Settings() {
                 name="restore-mode"
                 value={settings.defaultRestoreMode}
                 options={[
-                  { value: "discard-background", label: "New window (background)" },
+                  {
+                    value: "discard-background",
+                    label: "New window (background)",
+                  },
                   { value: "active-all", label: "Current window (active)" },
                 ]}
                 onChange={handleRestoreModeChange}

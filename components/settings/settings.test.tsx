@@ -27,7 +27,9 @@ vi.mock("../../lib/storage/adapter", () => ({
 /*  Helpers                                                             */
 /* ------------------------------------------------------------------ */
 
-function makeRoot(overrides: Partial<StorageRoot["settings"]> = {}): StorageRoot {
+function makeRoot(
+  overrides: Partial<StorageRoot["settings"]> = {},
+): StorageRoot {
   const root = defaultRoot();
   root.settings = { ...root.settings, ...overrides };
   return root;
@@ -46,10 +48,18 @@ beforeEach(() => {
 describe("Settings", () => {
   it("renders all four section headings", () => {
     render(<Settings />);
-    expect(screen.getByRole("heading", { name: /appearance/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /restore/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /integrations/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /automation/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /appearance/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /restore/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /integrations/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /automation/i }),
+    ).toBeInTheDocument();
   });
 
   it("shows loading state when loading is true", () => {

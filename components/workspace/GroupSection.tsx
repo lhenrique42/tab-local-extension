@@ -51,6 +51,7 @@ interface GroupSectionProps {
 
 interface SortableCollectionCardProps {
   collection: SavedCollection;
+  groupName: string;
   isDragging?: boolean;
   onRename: (id: string, name: string) => void;
   onDelete: (id: string) => void;
@@ -63,6 +64,7 @@ interface SortableCollectionCardProps {
 
 function SortableCollectionCard({
   collection,
+  groupName,
   isDragging = false,
   ...cardProps
 }: SortableCollectionCardProps) {
@@ -86,7 +88,7 @@ function SortableCollectionCard({
       >
         <Icon name="grip" size={12} aria-hidden />
       </button>
-      <CollectionCard collection={collection} {...cardProps} />
+      <CollectionCard collection={collection} groupName={groupName} {...cardProps} />
     </div>
   );
 }
@@ -146,7 +148,6 @@ export function GroupSection({
       : "var(--fg-tertiary)";
 
   const collectionCount = collections.length;
-  const collectionLabel = `${collectionCount} ${collectionCount === 1 ? "collection" : "collections"}`;
 
   function startRename() {
     setRenameValue(group.name);
@@ -217,45 +218,50 @@ export function GroupSection({
             </h2>
           )}
 
-          <span className="tl-group-count" aria-label={collectionLabel}>
-            {collectionLabel}
+          <span
+            className="tl-group-count"
+            aria-label={`${collectionCount} collection${collectionCount !== 1 ? "s" : ""}`}
+          >
+            {collectionCount}
           </span>
 
-          <button
-            className="tl-btn tl-btn-sm tl-btn-ghost"
-            aria-label="Rename group"
-            title="Rename group"
-            onClick={(e) => {
-              e.stopPropagation();
-              startRename();
-            }}
-          >
-            <Icon name="save" size={12} />
-          </button>
+          <div className="tl-group-actions">
+            <button
+              className="tl-btn tl-btn-sm tl-btn-ghost"
+              aria-label="Rename group"
+              title="Rename group"
+              onClick={(e) => {
+                e.stopPropagation();
+                startRename();
+              }}
+            >
+              <Icon name="pencil" size={12} />
+            </button>
 
-          <button
-            className="tl-btn tl-btn-sm tl-btn-ghost"
-            aria-label="New collection"
-            title="New collection in this group"
-            onClick={(e) => {
-              e.stopPropagation();
-              onNewCollection(group.id);
-            }}
-          >
-            <Icon name="plus" size={12} />
-          </button>
+            <button
+              className="tl-btn tl-btn-sm tl-btn-ghost"
+              aria-label="New collection"
+              title="New collection in this group"
+              onClick={(e) => {
+                e.stopPropagation();
+                onNewCollection(group.id);
+              }}
+            >
+              <Icon name="plus" size={12} />
+            </button>
 
-          <button
-            className="tl-btn tl-btn-sm tl-btn-ghost"
-            aria-label="Delete group"
-            title="Delete group"
-            onClick={(e) => {
-              e.stopPropagation();
-              setConfirmDelete(true);
-            }}
-          >
-            <Icon name="trash" size={12} />
-          </button>
+            <button
+              className="tl-btn tl-btn-sm tl-btn-ghost"
+              aria-label="Delete group"
+              title="Delete group"
+              onClick={(e) => {
+                e.stopPropagation();
+                setConfirmDelete(true);
+              }}
+            >
+              <Icon name="trash" size={12} />
+            </button>
+          </div>
         </header>
 
         {open &&
@@ -283,6 +289,7 @@ export function GroupSection({
                     <SortableCollectionCard
                       key={c.id}
                       collection={c}
+                      groupName={group.name}
                       isDragging={activeCollectionId === c.id}
                       onRename={onRenameCollection}
                       onDelete={onDeleteCollection}

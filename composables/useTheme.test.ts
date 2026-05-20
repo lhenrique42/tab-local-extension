@@ -24,16 +24,15 @@ function stubMatchMedia(prefersDark: boolean) {
   const listeners: Array<(e: { matches: boolean }) => void> = [];
   const mq = {
     matches: prefersDark,
-    addEventListener: vi.fn((_: string, fn: (e: { matches: boolean }) => void) => {
-      listeners.push(fn);
-    }),
+    addEventListener: vi.fn(
+      (_: string, fn: (e: { matches: boolean }) => void) => {
+        listeners.push(fn);
+      },
+    ),
     removeEventListener: vi.fn(),
     _trigger: (matches: boolean) => listeners.forEach((fn) => fn({ matches })),
   };
-  vi.stubGlobal(
-    "matchMedia",
-    vi.fn().mockReturnValue(mq),
-  );
+  vi.stubGlobal("matchMedia", vi.fn().mockReturnValue(mq));
   return mq;
 }
 

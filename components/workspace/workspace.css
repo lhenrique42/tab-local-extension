@@ -7,10 +7,146 @@
 .tl-app {
   display: grid;
   grid-template-columns: 280px 1fr;
+  grid-template-rows: 56px 1fr;
   min-height: 100vh;
 }
 .tl-app--no-sidebar {
   grid-template-columns: 1fr;
+}
+.tl-app .tl-header { grid-column: 1 / -1; }
+.tl-app .tl-sidebar { grid-column: 1; grid-row: 2; overflow-y: auto; }
+.tl-app .tl-workspace { grid-column: 2; grid-row: 2; }
+.tl-app--no-sidebar .tl-workspace { grid-column: 1; }
+
+/* =========================================================
+   Header
+   ========================================================= */
+.tl-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  padding: 0 var(--space-7);
+  height: 56px;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: color-mix(in srgb, var(--bg) 80%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.tl-header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-shrink: 0;
+}
+
+.tl-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--fg);
+  border: none !important;
+  text-decoration: none;
+}
+.tl-logo-word {
+  font: 600 16px/1 var(--font-sans);
+  letter-spacing: -0.01em;
+}
+.tl-logo-word-light { opacity: 0.55; font-weight: 400; }
+
+.tl-eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  color: var(--fg-tertiary);
+  font-weight: 500;
+  padding-left: var(--space-3);
+  border-left: 1px solid var(--border-subtle);
+}
+
+.tl-header-search {
+  position: relative;
+  flex: 1;
+  max-width: 560px;
+  display: flex;
+  align-items: center;
+}
+.tl-header-search svg {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--fg-tertiary);
+  pointer-events: none;
+}
+.tl-header-search input {
+  width: 100%;
+  height: 34px;
+  padding: 0 36px;
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--fg);
+  font: 400 var(--text-sm)/1 var(--font-sans);
+  outline: none;
+  transition: border-color var(--dur-fast) var(--ease-out), background var(--dur-fast);
+}
+.tl-header-search input:hover { border-color: var(--border); }
+.tl-header-search input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.tl-header-search input::placeholder { color: var(--fg-tertiary); }
+.tl-header-search kbd {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 18px;
+  min-width: 18px;
+  padding: 0 5px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--fg-tertiary);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  line-height: 1;
+  pointer-events: none;
+}
+
+.tl-header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-left: auto;
+}
+
+.tl-stat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--fg-secondary);
+}
+.tl-stat-num { font-weight: 500; color: var(--fg); }
+.tl-stat-label { color: var(--fg-tertiary); letter-spacing: 0.02em; }
+.tl-stat-sep { color: var(--fg-tertiary); }
+
+.tl-btn-shortcut {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  opacity: 0.55;
+  padding-left: 4px;
+  border-left: 1px solid currentColor;
+  margin-left: 2px;
+  line-height: 1;
 }
 
 /* =========================================================
@@ -482,6 +618,45 @@
   font-weight: 600;
   flex-shrink: 0;
 }
+
+.tl-side-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 400 11px/1 var(--font-mono);
+  color: var(--fg-tertiary);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.tl-side-foot {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.tl-storage-meter { display: flex; flex-direction: column; gap: 6px; }
+.tl-storage-bar {
+  height: 4px;
+  background: var(--surface-raised);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.tl-storage-bar span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width var(--dur-slow) var(--ease-out);
+}
+.tl-storage-label {
+  display: flex;
+  justify-content: space-between;
+  font: 400 10px/1 var(--font-mono);
+  color: var(--fg-tertiary);
+  letter-spacing: 0.04em;
+}
+.tl-storage-label .tl-mono { color: var(--fg-secondary); }
 
 /* =========================================================
    Inline rename input

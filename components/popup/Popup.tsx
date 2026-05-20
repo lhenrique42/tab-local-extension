@@ -1,9 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Icon, EmptyState } from "../shared";
 import { useStorage } from "../../lib/hooks/useStorage";
 import { sendToBackground } from "../../lib/messaging/client";
-import { createTab } from "../../lib/chrome/tabs";
+import { createTab, getCurrentWindowTabs } from "../../lib/chrome/tabs";
 import type { SavedCollection } from "../../lib/storage/schema";
+import type { TabInfo } from "../../lib/chrome/tabs";
+import { storage } from "../../lib/storage/adapter";
+import { nanoid } from "nanoid";
 
 /* ------------------------------------------------------------------ */
 /*  Logo                                                                */
@@ -44,14 +47,47 @@ function PopupLogo() {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Current-page card                                                   */
+/* ------------------------------------------------------------------ */
+
+function PageCard({ tab }: { tab: TabInfo }) {
+  const hostname = (() => {
+    try {
+      return new URL(tab.url).hostname;
+    } catch {
+      return tab.url;
+    }
+  })();
+  const letter = (tab.title[0] ?? hostname[0] ?? "?").toUpperCase();
+
+  const LETTER_COLORS = [
+    "#4A90E2", "#E89A4A", "#5CB87E", "#E25C5C",
+    "#9B6BE2", "#4DBDBD", "#F5C242", "#E26AA5",
+  ];
+  const color = LETTER_COLORS[letter.charCodeAt(0) % LETTER_COLORS.length];
+
+  return (
+    <div className="tl-pp-now-row">
+      <span
+        className="tl-pp-now-fav"
+        style={{ background: color }}
+        aria-hidden="true"
+      >
+        {letter}
+      </span>
+      <div className="tl-pp-now-meta">
+        <div className="tl-pp-now-title" title={tab.title}>{tab.title}</div>
+        <div className="tl-pp-now-url">{hostname}</div>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /*  Recent collection row                                               */
 /* ------------------------------------------------------------------ */
 
-interface RecentCollectionRowProps {
-  collection: SavedCollection;
-}
-
-function RecentCollectionRow({ collection }: RecentCollectionRowProps) {
+function RecentCollectionRow({ collection }: { collection: SavedCollection }) {
   const tabCount = collection.tabs.length;
   return (
     <div className="tl-pp-coll" role="listitem">
@@ -66,6 +102,9 @@ function RecentCollectionRow({ collection }: RecentCollectionRowProps) {
       />
       <span className="tl-pp-coll-name">{collection.name}</span>
       <span className="tl-pp-coll-count">{tabCount}</span>
+      <span className="tl-pp-coll-add" aria-hidden="true">
+        <Icon name="plus" size={14} />
+      </span>
     </div>
   );
 }
@@ -79,11 +118,7 @@ type BannerState =
   | { kind: "error"; message: string }
   | null;
 
-interface BannerProps {
-  banner: BannerState;
-}
-
-function Banner({ banner }: BannerProps) {
+function Banner({ banner }: { banner: BannerState }) {
   if (!banner) return null;
   if (banner.kind === "success") {
     return (
@@ -104,7 +139,7 @@ function Banner({ banner }: BannerProps) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Main Popup component                                                */
+/*  Main Popup                                                          */
 /* ------------------------------------------------------------------ */
 
 function buildDefaultName(): string {
@@ -117,17 +152,32 @@ export function Popup() {
   const [saving, setSaving] = useState(false);
   const [grouping, setGrouping] = useState(false);
   const [banner, setBanner] = useState<BannerState>(null);
+  const [windowTabs, setWindowTabs] = useState<TabInfo[]>([]);
+  const [newCollName, setNewCollName] = useState("");
+  const newCollInputRef = useRef<HTMLInputElement>(null);
 
   const autoGroupEnabled = root.settings.autoGroupByDomainEnabled;
+
+  // Fetch current window tabs on mount for page card and tab count
+  useEffect(() => {
+    getCurrentWindowTabs().then(setWindowTabs);
+  }, []);
+
+  const activeTab = windowTabs.find((t) => t.active) ?? null;
+  const tabCount = windowTabs.length;
 
   // Sort collections by createdAt descending, take 3
   const recentCollections: SavedCollection[] = Object.values(root.collections)
     .sort((a, b) => b.createdAt - a.createdAt)
     .slice(0, 3);
 
-  async function handleSaveSession() {
+  function showBanner(next: BannerState) {
+    setBanner(next);
+    setTimeout(() => setBanner(null), 2000);
+  }
+
+  async function handleSaveSession(name = buildDefaultName()) {
     setSaving(true);
-    const name = buildDefaultName();
     const response = await sendToBackground({
       type: "SAVE_WINDOW",
       payload: { collectionName: name },
@@ -135,12 +185,35 @@ export function Popup() {
     setSaving(false);
 
     if (response.ok) {
-      setBanner({ kind: "success", name });
+      showBanner({ kind: "success", name });
     } else {
-      setBanner({ kind: "error", message: response.error });
+      showBanner({ kind: "error", message: response.error });
     }
+  }
 
-    setTimeout(() => setBanner(null), 2000);
+  async function handleNewCollSave() {
+    const trimmed = newCollName.trim();
+    if (!trimmed) return;
+
+    const id = nanoid();
+    const now = Date.now();
+    await storage.patch((draft) => {
+      const firstGroupId = Object.keys(draft.groups)[0] ?? null;
+      draft.collections[id] = {
+        id,
+        name: trimmed,
+        groupId: firstGroupId,
+        chromeGroupColor: null,
+        tabs: [],
+        createdAt: now,
+        updatedAt: now,
+      };
+      if (firstGroupId) {
+        draft.groups[firstGroupId].collectionIds.push(id);
+      }
+    });
+    setNewCollName("");
+    showBanner({ kind: "success", name: trimmed });
   }
 
   function handleOpenWorkspace() {
@@ -162,8 +235,7 @@ export function Popup() {
     setGrouping(false);
 
     if (!response.ok) {
-      setBanner({ kind: "error", message: response.error });
-      setTimeout(() => setBanner(null), 2000);
+      showBanner({ kind: "error", message: response.error });
     }
   }
 
@@ -175,18 +247,28 @@ export function Popup() {
           <PopupLogo />
         </span>
         <span className="tl-pp-head-title">TabLocal</span>
-        <span className="tl-pp-head-eyebrow">local</span>
+        <span className="tl-pp-head-eyebrow">
+          {tabCount > 0 ? `local · ${tabCount}` : "local"}
+        </span>
+        <button
+          className="tl-btn tl-btn-ghost tl-btn-icon"
+          onClick={handleOpenSettings}
+          aria-label="Open settings"
+        >
+          <Icon name="settings" size={13} />
+        </button>
       </header>
 
       {/* Toast banner */}
       <Banner banner={banner} />
 
-      {/* Save session action */}
+      {/* Current-page card + save action */}
       <div className="tl-pp-now">
+        {activeTab && <PageCard tab={activeTab} />}
         <div className="tl-pp-now-actions">
           <button
             className="tl-btn tl-btn-primary tl-btn-block"
-            onClick={handleSaveSession}
+            onClick={() => void handleSaveSession()}
             disabled={saving}
             aria-busy={saving}
           >
@@ -196,7 +278,7 @@ export function Popup() {
           {autoGroupEnabled && (
             <button
               className="tl-btn tl-btn-ghost tl-btn-block"
-              onClick={handleAutoGroup}
+              onClick={() => void handleAutoGroup()}
               disabled={grouping}
               aria-busy={grouping}
             >
@@ -207,9 +289,15 @@ export function Popup() {
         </div>
       </div>
 
-      {/* Recent collections */}
+      {/* Recent collections section */}
       <div className="tl-pp-section">
-        <span className="tl-pp-section-label">Recent collections</span>
+        <span className="tl-pp-section-label">Or add to…</span>
+        <button
+          className="tl-pp-section-link"
+          onClick={handleOpenWorkspace}
+        >
+          All ↗
+        </button>
       </div>
 
       <div className="tl-pp-list">
@@ -229,6 +317,25 @@ export function Popup() {
         )}
       </div>
 
+      {/* New collection inline input */}
+      <div className="tl-pp-new">
+        <input
+          ref={newCollInputRef}
+          value={newCollName}
+          onChange={(e) => setNewCollName(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && void handleNewCollSave()}
+          placeholder="+ New collection…"
+          aria-label="New collection name"
+        />
+        <button
+          className="tl-btn tl-btn-secondary"
+          disabled={!newCollName.trim()}
+          onClick={() => void handleNewCollSave()}
+        >
+          Save
+        </button>
+      </div>
+
       {/* Footer */}
       <footer className="tl-pp-foot">
         <span className="tl-pp-foot-kbd">
@@ -236,25 +343,14 @@ export function Popup() {
           <kbd>D</kbd>
           <span style={{ marginLeft: 6 }}>quick save</span>
         </span>
-        <span style={{ display: "flex", gap: 8 }}>
-          <button
-            className="tl-btn tl-btn-ghost"
-            style={{ height: "auto", padding: 0, fontSize: 11 }}
-            onClick={handleOpenSettings}
-            aria-label="Open settings"
-          >
-            <Icon name="settings" size={11} />
-            Settings
-          </button>
-          <button
-            className="tl-btn tl-btn-ghost"
-            style={{ height: "auto", padding: 0, fontSize: 11 }}
-            onClick={handleOpenWorkspace}
-            aria-label="Open workspace in new tab"
-          >
-            Open workspace <Icon name="external" size={11} />
-          </button>
-        </span>
+        <button
+          className="tl-btn tl-btn-ghost"
+          style={{ height: "auto", padding: 0, fontSize: 11 }}
+          onClick={handleOpenWorkspace}
+          aria-label="Open workspace in new tab"
+        >
+          Open workspace <Icon name="external" size={11} />
+        </button>
       </footer>
     </div>
   );

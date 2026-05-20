@@ -71,10 +71,21 @@ function makeRoot(overrides: Partial<StorageRoot> = {}): StorageRoot {
   };
 }
 
+// Mock messaging and chrome adapters used by Header/Workspace
+const mockSendToBackground = vi.fn();
+vi.mock("../../lib/messaging/client", () => ({
+  sendToBackground: (...args: unknown[]) => mockSendToBackground(...args),
+}));
+vi.mock("../../lib/chrome/tabs", () => ({
+  createTab: vi.fn(),
+  getCurrentWindowTabs: vi.fn().mockResolvedValue([]),
+}));
+
 // Wire fake chrome before each test
 beforeEach(async () => {
   await fakeBrowser.storage.local.clear();
   vi.stubGlobal("chrome", fakeBrowser);
+  mockSendToBackground.mockResolvedValue({ ok: true });
 });
 
 // -------------------------------------------------------------------
@@ -128,13 +139,45 @@ describe("Workspace", () => {
       collections: { c1: makeCollection({ id: "c1", groupId: "g1" }) },
     });
     render(<Workspace root={root} loading={false} />);
-    expect(screen.getByText("Group One")).toBeInTheDocument();
-    expect(screen.getByText("Group Two")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Group One" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Group Two" })).toBeInTheDocument();
   });
 
   it("renders loading state when loading=true", () => {
     render(<Workspace root={defaultRoot()} loading={true} />);
     expect(screen.getByRole("main")).toHaveAttribute("aria-busy", "true");
+  });
+
+  it("renders the header with logo", () => {
+    render(<Workspace root={defaultRoot()} loading={false} />);
+    expect(screen.getByRole("banner")).toBeInTheDocument();
+    expect(screen.getByLabelText("TabLocal")).toBeInTheDocument();
+  });
+
+  it("renders stats in the header", () => {
+    const root = makeRoot();
+    render(<Workspace root={root} loading={false} />);
+    expect(screen.getByLabelText("Search tabs and collections")).toBeInTheDocument();
+  });
+
+  it("filters groups by search query", async () => {
+    const root = makeRoot({
+      groups: {
+        g1: makeGroup({ id: "g1", name: "Work", collectionIds: ["c1"] }),
+        g2: makeGroup({ id: "g2", name: "Personal", collectionIds: ["c2"] }),
+      },
+      collections: {
+        c1: makeCollection({ id: "c1", name: "Sprint docs", groupId: "g1" }),
+        c2: makeCollection({ id: "c2", name: "Reading list", groupId: "g2" }),
+      },
+    });
+    render(<Workspace root={root} loading={false} />);
+
+    const searchInput = screen.getByLabelText("Search tabs and collections");
+    await userEvent.type(searchInput, "Sprint");
+
+    expect(screen.getByRole("heading", { level: 2, name: "Work" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 2, name: "Personal" })).not.toBeInTheDocument();
   });
 });
 

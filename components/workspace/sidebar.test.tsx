@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, act } from "@testing-library/react";
+import { render, screen, act, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderHook } from "@testing-library/react";
 import { LiveTabsSidebar } from "./LiveTabsSidebar";
@@ -11,9 +11,19 @@ import type { TabInfo } from "../../lib/chrome/tabs";
 /* ------------------------------------------------------------------ */
 
 const mockGetCurrentWindowTabs = vi.fn();
+const mockSendToBackground = vi.fn();
+const mockGetStorageUsage = vi.fn().mockResolvedValue({ usedBytes: 0, quotaBytes: 5 * 1024 * 1024 });
 
 vi.mock("../../lib/chrome/tabs", () => ({
   getCurrentWindowTabs: () => mockGetCurrentWindowTabs(),
+}));
+
+vi.mock("../../lib/messaging/client", () => ({
+  sendToBackground: (...args: unknown[]) => mockSendToBackground(...args),
+}));
+
+vi.mock("../../lib/chrome/storage", () => ({
+  getStorageUsage: () => mockGetStorageUsage(),
 }));
 
 /* ------------------------------------------------------------------ */
@@ -45,6 +55,7 @@ beforeEach(() => {
   } as unknown as typeof chrome;
 
   mockGetCurrentWindowTabs.mockResolvedValue([]);
+  mockSendToBackground.mockResolvedValue({ ok: true });
 });
 
 afterEach(() => {
@@ -165,5 +176,37 @@ describe("LiveTabsSidebar", () => {
     const rows = screen.getAllByRole("listitem");
     expect(rows[0].className).toContain("is-active");
     expect(rows[1].className).not.toContain("is-active");
+  });
+
+  it("renders the Save all as collection button", async () => {
+    mockGetCurrentWindowTabs.mockResolvedValueOnce(sampleTabs);
+    render(<LiveTabsSidebar onToggle={vi.fn()} />);
+    await act(async () => {});
+    expect(
+      screen.getByRole("button", { name: /save all as collection/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("calls sendToBackground with SAVE_WINDOW when Save all is clicked", async () => {
+    mockGetCurrentWindowTabs.mockResolvedValueOnce(sampleTabs);
+    render(<LiveTabsSidebar onToggle={vi.fn()} />);
+    await act(async () => {});
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /save all as collection/i }),
+    );
+
+    await waitFor(() =>
+      expect(mockSendToBackground).toHaveBeenCalledWith(
+        expect.objectContaining({ type: "SAVE_WINDOW" }),
+      ),
+    );
+  });
+
+  it("renders the storage meter", async () => {
+    mockGetCurrentWindowTabs.mockResolvedValueOnce([]);
+    render(<LiveTabsSidebar onToggle={vi.fn()} />);
+    await act(async () => {});
+    expect(screen.getByRole("progressbar")).toBeInTheDocument();
   });
 });

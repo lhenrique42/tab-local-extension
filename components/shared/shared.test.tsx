@@ -72,22 +72,38 @@ describe('ConfirmDialog', () => {
 describe('Button', () => {
   it('renders in primary variant', () => {
     const { container } = render(<Button variant="primary">Save</Button>);
-    expect(container.firstChild).toHaveClass('tl-btn--primary');
+    expect(container.firstChild).toHaveClass('tl-btn-primary');
+  });
+
+  it('renders in secondary variant', () => {
+    const { container } = render(<Button variant="secondary">Secondary</Button>);
+    expect(container.firstChild).toHaveClass('tl-btn-secondary');
   });
 
   it('renders in ghost variant', () => {
     const { container } = render(<Button variant="ghost">Cancel</Button>);
-    expect(container.firstChild).toHaveClass('tl-btn--ghost');
+    expect(container.firstChild).toHaveClass('tl-btn-ghost');
   });
 
   it('renders in danger variant', () => {
     const { container } = render(<Button variant="danger">Delete</Button>);
-    expect(container.firstChild).toHaveClass('tl-btn--danger');
+    expect(container.firstChild).toHaveClass('tl-btn-danger');
+  });
+
+  it('renders with sm size class', () => {
+    const { container } = render(<Button size="sm">Small</Button>);
+    expect(container.firstChild).toHaveClass('tl-btn-sm');
+  });
+
+  it('renders with icon and block modifiers', () => {
+    const { container } = render(<Button icon block>Icon</Button>);
+    expect(container.firstChild).toHaveClass('tl-btn-icon');
+    expect(container.firstChild).toHaveClass('tl-btn-block');
   });
 
   it('shows loading spinner when loading={true}', () => {
     render(<Button loading>Saving…</Button>);
-    expect(document.querySelector('.tl-btn__spinner')).toBeInTheDocument();
+    expect(document.querySelector('.tl-btn-spinner')).toBeInTheDocument();
     // Children not visible during loading
     expect(screen.queryByText('Saving…')).not.toBeInTheDocument();
   });

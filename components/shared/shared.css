@@ -26,41 +26,70 @@
 }
 
 /* primary */
-.tl-btn--primary {
+.tl-btn-primary {
   background: var(--accent);
   color: var(--fg-on-accent);
   border-color: transparent;
 }
-.tl-btn--primary:hover:not(:disabled) { background: var(--accent-hover); }
-.tl-btn--primary:active:not(:disabled) { background: var(--accent-press); }
+.tl-btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+.tl-btn-primary:active:not(:disabled) { background: var(--accent-press); }
+
+/* secondary */
+.tl-btn-secondary {
+  background: var(--surface-raised);
+  color: var(--fg);
+  border-color: var(--border-subtle);
+}
+.tl-btn-secondary:hover:not(:disabled) {
+  background: var(--surface-higher);
+  border-color: var(--border);
+}
+.tl-btn-secondary:active:not(:disabled) { background: var(--surface-higher); }
 
 /* ghost */
-.tl-btn--ghost {
+.tl-btn-ghost {
   background: transparent;
   color: var(--fg-secondary);
   border-color: transparent;
 }
-.tl-btn--ghost:hover:not(:disabled) {
+.tl-btn-ghost:hover:not(:disabled) {
   background: var(--surface-raised);
   color: var(--fg);
 }
-.tl-btn--ghost:active:not(:disabled) { background: var(--surface-higher); }
+.tl-btn-ghost:active:not(:disabled) { background: var(--surface-higher); }
 
 /* danger */
-.tl-btn--danger {
+.tl-btn-danger {
   background: transparent;
   color: var(--status-danger);
   border-color: var(--status-danger);
 }
-.tl-btn--danger:hover:not(:disabled) {
+.tl-btn-danger:hover:not(:disabled) {
   background: rgba(226, 92, 92, 0.1);
 }
-.tl-btn--danger:active:not(:disabled) {
+.tl-btn-danger:active:not(:disabled) {
   background: rgba(226, 92, 92, 0.2);
 }
 
+/* size modifiers */
+.tl-btn-sm {
+  height: 26px;
+  padding: 0 10px;
+  font-size: 12px;
+  gap: 6px;
+}
+
+/* shape modifiers */
+.tl-btn-icon {
+  width: 32px;
+  padding: 0;
+  justify-content: center;
+}
+.tl-btn-icon.tl-btn-sm { width: 26px; }
+.tl-btn-block { width: 100%; justify-content: center; }
+
 /* loading spinner */
-.tl-btn__spinner {
+.tl-btn-spinner {
   width: 14px;
   height: 14px;
   border: 2px solid currentColor;

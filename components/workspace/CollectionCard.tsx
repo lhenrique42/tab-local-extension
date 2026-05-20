@@ -7,6 +7,7 @@ import { TabList } from "./TabList";
 
 interface CollectionCardProps {
   collection: SavedCollection;
+  groupName?: string;
   onRename: (id: string, name: string) => void;
   onDelete: (id: string) => void;
   onAddTab: (collectionId: string, url: string) => void;
@@ -21,6 +22,7 @@ const PREVIEW_LIMIT = 4;
 /** Collection card — shows name, tab count badge, preview tab list or expanded TabList. */
 export function CollectionCard({
   collection,
+  groupName,
   onRename,
   onDelete,
   onAddTab,
@@ -171,7 +173,7 @@ export function CollectionCard({
                 startRename();
               }}
             >
-              <Icon name="save" size={12} />
+              <Icon name="pencil" size={12} />
             </button>
             <button
               className="tl-btn tl-btn-sm tl-btn-ghost"
@@ -322,7 +324,7 @@ export function CollectionCard({
               style={{ background: barColor }}
               aria-hidden="true"
             />
-            {collection.groupId ?? "—"}
+            {groupName ?? "—"}
           </span>
         </footer>
       </article>
