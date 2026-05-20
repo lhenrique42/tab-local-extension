@@ -133,11 +133,79 @@ export const handleRestoreCollection: MessageHandler<
   }
 };
 
+const GROUPABLE_PATTERN = /^https?:\/\//;
+
 export const handleAutoGroupWindow: MessageHandler<
   Extract<BackgroundMessage, { type: "AUTO_GROUP_WINDOW" }>
-> = async (_msg, _sender, _storageAdapter) => {
-  // Stub — full implementation in TASK-013
-  return { ok: true, data: null };
+> = async (msg, _sender, _storageAdapter) => {
+  try {
+    if (typeof chrome.tabGroups === "undefined") {
+      return { ok: true, data: { groupCount: 0 } };
+    }
+
+    // Determine target window
+    const windowId = msg.payload.windowId;
+    const queryInfo: chrome.tabs.QueryInfo = windowId
+      ? { windowId }
+      : { currentWindow: true };
+    const rawTabs = await chrome.tabs.query(queryInfo);
+
+    // Filter to http/https tabs only
+    const tabs = rawTabs.filter(
+      (t) => t.url && GROUPABLE_PATTERN.test(t.url) && t.id != null,
+    );
+
+    if (tabs.length === 0) {
+      return { ok: true, data: { groupCount: 0 } };
+    }
+
+    // Cluster by hostname
+    const clusters = new Map<string, number[]>();
+    for (const tab of tabs) {
+      try {
+        const hostname = new URL(tab.url!).hostname;
+        const existing = clusters.get(hostname) ?? [];
+        existing.push(tab.id!);
+        clusters.set(hostname, existing);
+      } catch {
+        // Malformed URL — skip
+      }
+    }
+
+    // Query existing tab groups for idempotency
+    const existingGroups = await queryTabGroups(windowId ? { windowId } : {});
+    const groupByTitle = new Map(
+      existingGroups.filter((g) => g.title).map((g) => [g.title!, g.id]),
+    );
+
+    let groupCount = 0;
+
+    for (const [hostname, tabIds] of clusters.entries()) {
+      if (tabIds.length < 2) continue; // skip singletons
+
+      // Idempotency: reuse existing group with same title
+      const existingGroupId = groupByTitle.get(hostname);
+      const tabIdsArg = tabIds as [number, ...number[]];
+      const groupId = existingGroupId
+        ? await chrome.tabs.group({
+            tabIds: tabIdsArg,
+            groupId: existingGroupId,
+          })
+        : await chrome.tabs.group({ tabIds: tabIdsArg });
+
+      if (groupId != null) {
+        await chrome.tabGroups.update(groupId as number, { title: hostname });
+      }
+      groupCount++;
+    }
+
+    return { ok: true, data: { groupCount } };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
 };
 
 export const handleSyncNativeGroups: MessageHandler<

@@ -6,6 +6,7 @@ import {
   handleSaveWindow,
   handleRestoreCollection,
   handleSyncNativeGroups,
+  handleAutoGroupWindow,
 } from "./handlers";
 import { registerNativeGroupSyncListener } from "./nativeGroupSync";
 import { sendToBackground } from "./client";
@@ -327,7 +328,6 @@ describe("handleRestoreCollection", () => {
         focused: true,
         incognito: false,
         alwaysOnTop: false,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         tabs: [
           {
             id: 55,
@@ -336,6 +336,7 @@ describe("handleRestoreCollection", () => {
             active: true,
             pinned: false,
             incognito: false,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
           } as any,
         ],
       });
@@ -497,7 +498,7 @@ describe("Integration: SAVE_WINDOW → storage", () => {
 describe("handleSyncNativeGroups", () => {
   const syncMsg = {
     type: "SYNC_NATIVE_GROUPS" as const,
-    payload: undefined,
+    payload: {},
   };
 
   function makeCollectionWithGroup(chromeGroupId: number, color = "blue") {
@@ -745,5 +746,161 @@ describe("registerNativeGroupSyncListener", () => {
     const updated = await adapter.read();
     expect(updated.collections["col1"].chromeGroupColor).toBe("red");
     expect(updated.collections["col1"].name).toBe("New Name");
+  });
+});
+
+// ──────────────────────────────────────────────
+// handleAutoGroupWindow
+// ──────────────────────────────────────────────
+
+describe("handleAutoGroupWindow", () => {
+  const autoGroupMsg = {
+    type: "AUTO_GROUP_WINDOW" as const,
+    payload: {} as { windowId?: number },
+  };
+
+  function setupTabGroupsAPI(
+    tabs: Partial<chrome.tabs.Tab>[] = [],
+    existingGroups: Partial<chrome.tabGroups.TabGroup>[] = [],
+  ) {
+    const groupSpy = vi.fn().mockResolvedValue(99);
+    const groupUpdateSpy = vi.fn().mockResolvedValue(undefined);
+    vi.spyOn(fakeBrowser.tabs, "query").mockResolvedValue(
+      tabs as chrome.tabs.Tab[],
+    );
+    vi.stubGlobal("chrome", {
+      ...fakeBrowser,
+      tabs: {
+        ...fakeBrowser.tabs,
+        query: vi.fn().mockResolvedValue(tabs),
+        group: groupSpy,
+      },
+      tabGroups: {
+        query: vi.fn().mockResolvedValue(existingGroups),
+        update: groupUpdateSpy,
+      },
+    });
+    return { groupSpy, groupUpdateSpy };
+  }
+
+  it("returns groupCount 0 when chrome.tabGroups is unavailable", async () => {
+    vi.stubGlobal("chrome", { ...fakeBrowser, tabGroups: undefined });
+    const adapter = makeStorage();
+    const result = await handleAutoGroupWindow(
+      autoGroupMsg,
+      dummySender,
+      adapter,
+    );
+    expect(result).toEqual({ ok: true, data: { groupCount: 0 } });
+  });
+
+  it("returns groupCount 0 when no http tabs are present", async () => {
+    setupTabGroupsAPI([
+      { id: 1, url: "chrome://newtab", windowId: 1 },
+      { id: 2, url: "about:blank", windowId: 1 },
+    ]);
+    const adapter = makeStorage();
+    const result = await handleAutoGroupWindow(
+      autoGroupMsg,
+      dummySender,
+      adapter,
+    );
+    expect(result).toEqual({ ok: true, data: { groupCount: 0 } });
+  });
+
+  it("skips singleton hostnames (only 1 tab on domain)", async () => {
+    const { groupSpy } = setupTabGroupsAPI([
+      { id: 1, url: "https://example.com/a", windowId: 1 },
+      { id: 2, url: "https://github.com/b", windowId: 1 },
+    ]);
+    const adapter = makeStorage();
+    await handleAutoGroupWindow(autoGroupMsg, dummySender, adapter);
+    expect(groupSpy).not.toHaveBeenCalled();
+  });
+
+  it("groups tabs with 2+ tabs on the same hostname", async () => {
+    const { groupSpy, groupUpdateSpy } = setupTabGroupsAPI([
+      { id: 1, url: "https://github.com/a", windowId: 1 },
+      { id: 2, url: "https://github.com/b", windowId: 1 },
+      { id: 3, url: "https://notion.so/x", windowId: 1 },
+    ]);
+    const adapter = makeStorage();
+    const result = await handleAutoGroupWindow(
+      autoGroupMsg,
+      dummySender,
+      adapter,
+    );
+    expect(groupSpy).toHaveBeenCalledOnce();
+    expect(groupSpy).toHaveBeenCalledWith({ tabIds: [1, 2] });
+    expect(groupUpdateSpy).toHaveBeenCalledWith(99, { title: "github.com" });
+    expect(result).toEqual({ ok: true, data: { groupCount: 1 } });
+  });
+
+  it("clusters multiple hostnames independently", async () => {
+    const { groupSpy } = setupTabGroupsAPI([
+      { id: 1, url: "https://github.com/a", windowId: 1 },
+      { id: 2, url: "https://github.com/b", windowId: 1 },
+      { id: 3, url: "https://notion.so/x", windowId: 1 },
+      { id: 4, url: "https://notion.so/y", windowId: 1 },
+    ]);
+    const adapter = makeStorage();
+    const result = await handleAutoGroupWindow(
+      autoGroupMsg,
+      dummySender,
+      adapter,
+    );
+    expect(groupSpy).toHaveBeenCalledTimes(2);
+    expect(result).toEqual({ ok: true, data: { groupCount: 2 } });
+  });
+
+  it("skips chrome:// and about: URLs", async () => {
+    const { groupSpy } = setupTabGroupsAPI([
+      { id: 1, url: "chrome://extensions", windowId: 1 },
+      { id: 2, url: "about:blank", windowId: 1 },
+      { id: 3, url: "https://example.com/1", windowId: 1 },
+      { id: 4, url: "https://example.com/2", windowId: 1 },
+    ]);
+    const adapter = makeStorage();
+    await handleAutoGroupWindow(autoGroupMsg, dummySender, adapter);
+    expect(groupSpy).toHaveBeenCalledOnce();
+    expect(groupSpy).toHaveBeenCalledWith({ tabIds: [3, 4] });
+  });
+
+  it("reuses existing group with same title for idempotency", async () => {
+    const { groupSpy } = setupTabGroupsAPI(
+      [
+        { id: 1, url: "https://github.com/a", windowId: 1 },
+        { id: 2, url: "https://github.com/b", windowId: 1 },
+      ],
+      [{ id: 55, title: "github.com", color: "blue" }],
+    );
+    const adapter = makeStorage();
+    await handleAutoGroupWindow(autoGroupMsg, dummySender, adapter);
+    expect(groupSpy).toHaveBeenCalledWith({ tabIds: [1, 2], groupId: 55 });
+  });
+
+  it("returns ok:false on chrome API error", async () => {
+    vi.stubGlobal("chrome", {
+      ...fakeBrowser,
+      tabs: {
+        ...fakeBrowser.tabs,
+        query: vi.fn().mockResolvedValue([
+          { id: 1, url: "https://github.com/a", windowId: 1 },
+          { id: 2, url: "https://github.com/b", windowId: 1 },
+        ]),
+        group: vi.fn().mockRejectedValue(new Error("API error")),
+      },
+      tabGroups: {
+        query: vi.fn().mockResolvedValue([]),
+        update: vi.fn(),
+      },
+    });
+    const adapter = makeStorage();
+    const result = await handleAutoGroupWindow(
+      autoGroupMsg,
+      dummySender,
+      adapter,
+    );
+    expect(result).toEqual({ ok: false, error: "API error" });
   });
 });

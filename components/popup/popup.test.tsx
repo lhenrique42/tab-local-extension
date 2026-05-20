@@ -162,3 +162,72 @@ describe("Popup", () => {
     expect(names).toEqual(["Newest", "Middle", "Oldest"]);
   });
 });
+
+// ──────────────────────────────────────────────
+// Auto-Group Tabs button
+// ──────────────────────────────────────────────
+
+describe("Popup — Auto-Group Tabs button", () => {
+  it("is hidden when autoGroupByDomainEnabled is false", () => {
+    const root = makeRoot();
+    root.settings.autoGroupByDomainEnabled = false;
+    mockUseStorage.mockReturnValue([root, false]);
+
+    render(<Popup />);
+    expect(
+      screen.queryByRole("button", { name: /auto-group tabs/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("is visible when autoGroupByDomainEnabled is true", () => {
+    const root = makeRoot();
+    root.settings.autoGroupByDomainEnabled = true;
+    mockUseStorage.mockReturnValue([root, false]);
+
+    render(<Popup />);
+    expect(
+      screen.getByRole("button", { name: /auto-group tabs/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("sends AUTO_GROUP_WINDOW message when clicked", async () => {
+    const root = makeRoot();
+    root.settings.autoGroupByDomainEnabled = true;
+    mockUseStorage.mockReturnValue([root, false]);
+    mockSendToBackground.mockResolvedValueOnce({
+      ok: true,
+      data: { groupCount: 2 },
+    });
+
+    render(<Popup />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /auto-group tabs/i }),
+    );
+
+    await waitFor(() =>
+      expect(mockSendToBackground).toHaveBeenCalledWith(
+        expect.objectContaining({ type: "AUTO_GROUP_WINDOW" }),
+      ),
+    );
+  });
+
+  it("shows error banner when AUTO_GROUP_WINDOW returns error", async () => {
+    const root = makeRoot();
+    root.settings.autoGroupByDomainEnabled = true;
+    mockUseStorage.mockReturnValue([root, false]);
+    mockSendToBackground.mockResolvedValueOnce({
+      ok: false,
+      error: "Tab groups unavailable",
+    });
+
+    render(<Popup />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /auto-group tabs/i }),
+    );
+
+    await waitFor(() => expect(screen.getByRole("alert")).toBeInTheDocument());
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Tab groups unavailable",
+    );
+  });
+});

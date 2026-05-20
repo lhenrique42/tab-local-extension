@@ -115,7 +115,10 @@ function buildDefaultName(): string {
 export function Popup() {
   const [root, loading] = useStorage();
   const [saving, setSaving] = useState(false);
+  const [grouping, setGrouping] = useState(false);
   const [banner, setBanner] = useState<BannerState>(null);
+
+  const autoGroupEnabled = root.settings.autoGroupByDomainEnabled;
 
   // Sort collections by createdAt descending, take 3
   const recentCollections: SavedCollection[] = Object.values(root.collections)
@@ -145,6 +148,20 @@ export function Popup() {
     window.close();
   }
 
+  async function handleAutoGroup() {
+    setGrouping(true);
+    const response = await sendToBackground({
+      type: "AUTO_GROUP_WINDOW",
+      payload: {},
+    });
+    setGrouping(false);
+
+    if (!response.ok) {
+      setBanner({ kind: "error", message: response.error });
+      setTimeout(() => setBanner(null), 2000);
+    }
+  }
+
   return (
     <div className="tl-popup" role="dialog" aria-label="TabLocal popup">
       {/* Header */}
@@ -171,6 +188,17 @@ export function Popup() {
             <Icon name="plus" size={12} />
             {saving ? "Saving…" : "Save current session"}
           </button>
+          {autoGroupEnabled && (
+            <button
+              className="tl-btn tl-btn-ghost tl-btn-block"
+              onClick={handleAutoGroup}
+              disabled={grouping}
+              aria-busy={grouping}
+            >
+              <Icon name="layers" size={12} />
+              {grouping ? "Grouping…" : "Auto-Group Tabs"}
+            </button>
+          )}
         </div>
       </div>
 
