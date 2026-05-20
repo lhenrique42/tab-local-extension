@@ -1,0 +1,26 @@
+# Build outputs
+.output/
+dist/
+*.zip
+
+# Dependencies
+node_modules/
+
+# Test coverage
+coverage/
+
+# WXT generated types
+.wxt/
+
+# OS / editor
+.DS_Store
+*.local
+.env
+.env.*
+
+# Logs
+*.log
+
+# Other
+tasks/
+.github/
