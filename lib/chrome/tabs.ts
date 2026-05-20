@@ -14,19 +14,20 @@ export async function getCurrentWindowTabs(): Promise<TabInfo[]> {
   try {
     const tabs = await chrome.tabs.query({ currentWindow: true });
     return tabs
-      .filter((t): t is chrome.tabs.Tab & { id: number; url: string } =>
-        typeof t.id === 'number' && typeof t.url === 'string',
+      .filter(
+        (t): t is chrome.tabs.Tab & { id: number; url: string } =>
+          typeof t.id === "number" && typeof t.url === "string",
       )
       .map((t) => ({
         id: t.id,
         url: t.url,
-        title: t.title ?? '',
+        title: t.title ?? "",
         faviconUrl: t.favIconUrl ?? null,
         windowId: t.windowId,
         active: t.active ?? false,
       }));
   } catch (err) {
-    console.error('[tabs] getCurrentWindowTabs failed:', err);
+    console.error("[tabs] getCurrentWindowTabs failed:", err);
     return [];
   }
 }
@@ -41,7 +42,7 @@ export async function createTab(
   try {
     return await chrome.tabs.create({ url, active });
   } catch (err) {
-    console.error('[tabs] createTab failed:', err);
+    console.error("[tabs] createTab failed:", err);
     return null;
   }
 }
@@ -53,7 +54,7 @@ export async function discardTab(tabId: number): Promise<void> {
   try {
     await chrome.tabs.discard(tabId);
   } catch (err) {
-    console.error('[tabs] discardTab failed:', err);
+    console.error("[tabs] discardTab failed:", err);
   }
 }
 
@@ -71,7 +72,7 @@ export async function groupTabs(
     const nonEmptyTabIds = tabIds as [number, ...number[]];
     return await chrome.tabs.group({ tabIds: nonEmptyTabIds, ...options });
   } catch (err) {
-    console.error('[tabs] groupTabs failed:', err);
+    console.error("[tabs] groupTabs failed:", err);
     return null;
   }
 }

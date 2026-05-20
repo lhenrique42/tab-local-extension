@@ -1,8 +1,8 @@
-import { useState } from 'react';
-import type { StorageRoot } from '../../lib/storage/schema';
-import { Icon } from '../shared';
-import { GroupSection } from './GroupSection';
-import { LiveTabsSidebar } from './LiveTabsSidebar';
+import { useState } from "react";
+import type { StorageRoot } from "../../lib/storage/schema";
+import { Icon } from "../shared";
+import { GroupSection } from "./GroupSection";
+import { LiveTabsSidebar } from "./LiveTabsSidebar";
 
 interface WorkspaceProps {
   root: StorageRoot;
@@ -16,7 +16,11 @@ export function Workspace({ root, loading }: WorkspaceProps) {
   if (loading) {
     return (
       <div className="tl-app">
-        <main className="tl-workspace" aria-busy="true" aria-label="Loading workspace">
+        <main
+          className="tl-workspace"
+          aria-busy="true"
+          aria-label="Loading workspace"
+        >
           <div className="tl-workspace-head">
             <h1 className="tl-workspace-title">Saved</h1>
           </div>
@@ -28,7 +32,7 @@ export function Workspace({ root, loading }: WorkspaceProps) {
   const groups = Object.values(root.groups);
 
   return (
-    <div className={`tl-app${sidebarOpen ? '' : ' tl-app--no-sidebar'}`}>
+    <div className={`tl-app${sidebarOpen ? "" : " tl-app--no-sidebar"}`}>
       {sidebarOpen && (
         <LiveTabsSidebar onToggle={() => setSidebarOpen(false)} />
       )}
@@ -48,29 +52,30 @@ export function Workspace({ root, loading }: WorkspaceProps) {
           )}
         </div>
 
-      {groups.length === 0 ? (
-        <div className="tl-workspace-empty" role="status">
-          <p className="tl-workspace-empty__title">No collections yet</p>
-          <p className="tl-workspace-empty__body">
-            Press <kbd>⌘</kbd> <kbd>⇧</kbd> <kbd>S</kbd> to save your current window as a collection.
-          </p>
-        </div>
-      ) : (
-        <div className="tl-groups">
-          {groups.map((group) => {
-            const collections = group.collectionIds
-              .map((id) => root.collections[id])
-              .filter(Boolean);
-            return (
-              <GroupSection
-                key={group.id}
-                group={group}
-                collections={collections}
-              />
-            );
-          })}
-        </div>
-      )}
+        {groups.length === 0 ? (
+          <div className="tl-workspace-empty" role="status">
+            <p className="tl-workspace-empty__title">No collections yet</p>
+            <p className="tl-workspace-empty__body">
+              Press <kbd>⌘</kbd> <kbd>⇧</kbd> <kbd>S</kbd> to save your current
+              window as a collection.
+            </p>
+          </div>
+        ) : (
+          <div className="tl-groups">
+            {groups.map((group) => {
+              const collections = group.collectionIds
+                .map((id) => root.collections[id])
+                .filter(Boolean);
+              return (
+                <GroupSection
+                  key={group.id}
+                  group={group}
+                  collections={collections}
+                />
+              );
+            })}
+          </div>
+        )}
       </main>
     </div>
   );

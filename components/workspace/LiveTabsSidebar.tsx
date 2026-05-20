@@ -1,6 +1,6 @@
-import { Icon, EmptyState } from '../shared';
-import { useLiveTabs } from '../../lib/hooks/useLiveTabs';
-import type { TabInfo } from '../../lib/chrome/tabs';
+import { Icon, EmptyState } from "../shared";
+import { useLiveTabs } from "../../lib/hooks/useLiveTabs";
+import type { TabInfo } from "../../lib/chrome/tabs";
 
 interface SidebarTabRowProps {
   tab: TabInfo;
@@ -8,13 +8,17 @@ interface SidebarTabRowProps {
 
 function SidebarTabRow({ tab }: SidebarTabRowProps) {
   const hostname = (() => {
-    try { return new URL(tab.url).hostname; } catch { return tab.url; }
+    try {
+      return new URL(tab.url).hostname;
+    } catch {
+      return tab.url;
+    }
   })();
-  const letter = (tab.title[0] ?? hostname[0] ?? '?').toUpperCase();
+  const letter = (tab.title[0] ?? hostname[0] ?? "?").toUpperCase();
 
   return (
     <div
-      className={`tl-side-row${tab.active ? ' is-active' : ''}`}
+      className={`tl-side-row${tab.active ? " is-active" : ""}`}
       title={tab.title}
       role="listitem"
     >
@@ -31,9 +35,9 @@ function SidebarTabRow({ tab }: SidebarTabRowProps) {
           style={{ borderRadius: 2, flexShrink: 0 }}
           onError={(e) => {
             const img = e.currentTarget;
-            img.style.display = 'none';
+            img.style.display = "none";
             const next = img.nextElementSibling as HTMLElement | null;
-            if (next) next.style.display = 'inline-flex';
+            if (next) next.style.display = "inline-flex";
           }}
         />
       ) : null}
@@ -44,7 +48,7 @@ function SidebarTabRow({ tab }: SidebarTabRowProps) {
           height: 14,
           borderRadius: 2,
           fontSize: 8,
-          display: tab.faviconUrl ? 'none' : undefined,
+          display: tab.faviconUrl ? "none" : undefined,
         }}
         aria-hidden="true"
       >
@@ -71,7 +75,7 @@ export function LiveTabsSidebar({ onToggle }: LiveTabsSidebarProps) {
         <div className="tl-side-head">
           <span className="tl-eyebrow">This window</span>
           <span className="tl-side-count">
-            {tabs.length} tab{tabs.length !== 1 ? 's' : ''}
+            {tabs.length} tab{tabs.length !== 1 ? "s" : ""}
           </span>
           <button
             className="tl-btn tl-btn-icon tl-btn-sm tl-btn-ghost"

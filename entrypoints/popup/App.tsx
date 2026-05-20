@@ -1,11 +1,7 @@
 import { useTheme } from '../../composables/useTheme';
+import { Popup } from '../../components/popup';
 
 export default function App() {
   useTheme();
-  return (
-    <div>
-      <h1>TabLocal</h1>
-      <p>Popup entrypoint (stub — implemented in TASK-007)</p>
-    </div>
-  );
+  return <Popup />;
 }

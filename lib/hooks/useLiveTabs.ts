@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import { getCurrentWindowTabs } from '../chrome/tabs';
-import type { TabInfo } from '../chrome/tabs';
+import { useState, useEffect } from "react";
+import { getCurrentWindowTabs } from "../chrome/tabs";
+import type { TabInfo } from "../chrome/tabs";
 
 /**
  * Returns the live list of tabs in the current window.
