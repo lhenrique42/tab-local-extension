@@ -52,10 +52,14 @@ function Favicon({ tab, size }: FaviconProps) {
 
 interface TabListProps {
   tabs: SavedTab[];
+  onRemove?: (tabId: string) => void;
+  onDuplicate?: (tabId: string) => void;
 }
 
-/** Read-only list of saved tab rows inside an expanded CollectionCard. */
-export function TabList({ tabs }: TabListProps) {
+/** Interactive list of saved tab rows inside an expanded CollectionCard. */
+export function TabList({ tabs, onRemove, onDuplicate }: TabListProps) {
+  const hasActions = Boolean(onRemove ?? onDuplicate);
+
   return (
     <div role="list" aria-label="Saved tabs">
       {tabs.map((tab) => (
@@ -68,6 +72,35 @@ export function TabList({ tabs }: TabListProps) {
           <span className="tl-tab-row-url" title={tab.url}>
             {(() => { try { return new URL(tab.url).hostname; } catch { return tab.url; } })()}
           </span>
+          {hasActions && (
+            <div className="tl-tab-row-actions">
+              {onDuplicate && (
+                <button
+                  className="tl-btn tl-btn-xs tl-btn-ghost"
+                  aria-label={`Duplicate tab ${tab.title}`}
+                  title="Duplicate"
+                  onClick={(e) => { e.stopPropagation(); onDuplicate(tab.id); }}
+                >
+                  <svg width="11" height="11" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                    <rect x="4" y="4" width="9" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
+                    <path d="M1 10V2a1 1 0 0 1 1-1h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                  </svg>
+                </button>
+              )}
+              {onRemove && (
+                <button
+                  className="tl-btn tl-btn-xs tl-btn-ghost tl-btn-danger-ghost"
+                  aria-label={`Remove tab ${tab.title}`}
+                  title="Remove"
+                  onClick={(e) => { e.stopPropagation(); onRemove(tab.id); }}
+                >
+                  <svg width="11" height="11" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                    <path d="M2 4h10M5 4V2h4v2M6 7v4M8 7v4M3 4l1 8h6l1-8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          )}
         </div>
       ))}
     </div>

@@ -502,3 +502,74 @@
   border-color: var(--accent);
   box-shadow: 0 0 0 2px var(--accent-soft);
 }
+
+/* =========================================================
+   Tab row actions (remove / duplicate)
+   ========================================================= */
+.tl-tab-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+.tl-tab-row:hover .tl-tab-row-actions,
+.tl-tab-row:focus-within .tl-tab-row-actions {
+  opacity: 1;
+}
+.tl-btn-xs {
+  padding: 2px 4px;
+  font-size: 10px;
+  line-height: 1;
+}
+.tl-btn-danger-ghost {
+  color: var(--danger, #e05c5c);
+}
+.tl-btn-danger-ghost:hover,
+.tl-btn-danger-ghost:focus-visible {
+  background: color-mix(in srgb, var(--danger, #e05c5c) 12%, transparent);
+}
+
+/* =========================================================
+   Add Tab form inside expanded CollectionCard
+   ========================================================= */
+.tl-add-tab-area {
+  padding: 8px 12px 4px;
+}
+.tl-add-tab-toggle {
+  font-size: 11px;
+  color: var(--fg-secondary);
+  width: 100%;
+  justify-content: flex-start;
+}
+.tl-add-tab-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tl-add-tab-input {
+  background: var(--surface-2, var(--bg-secondary));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--fg);
+  font: inherit;
+  font-size: 12px;
+  outline: none;
+  padding: 4px 8px;
+  width: 100%;
+  min-width: 0;
+}
+.tl-add-tab-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+.tl-add-tab-error {
+  color: var(--danger, #e05c5c);
+  font-size: 11px;
+}
+.tl-add-tab-actions {
+  display: flex;
+  gap: 6px;
+}

@@ -25,8 +25,8 @@ export function Workspace({ root, loading }: WorkspaceProps) {
     void storage.patch((draft) => {
       draft.groups[id] = {
         id,
-        name: 'New Group',
-        color: 'grey',
+        name: "New Group",
+        color: "grey",
         collectionIds: [],
         createdAt: now,
         updatedAt: now,
@@ -40,7 +40,7 @@ export function Workspace({ root, loading }: WorkspaceProps) {
     void storage.patch((draft) => {
       draft.collections[id] = {
         id,
-        name: 'New Collection',
+        name: "New Collection",
         groupId,
         chromeGroupColor: null,
         tabs: [],
@@ -86,10 +86,54 @@ export function Workspace({ root, loading }: WorkspaceProps) {
     void storage.patch((draft) => {
       const collection = draft.collections[id];
       if (collection?.groupId && draft.groups[collection.groupId]) {
-        draft.groups[collection.groupId].collectionIds =
-          draft.groups[collection.groupId].collectionIds.filter((cid) => cid !== id);
+        draft.groups[collection.groupId].collectionIds = draft.groups[
+          collection.groupId
+        ].collectionIds.filter((cid) => cid !== id);
       }
       delete draft.collections[id];
+    });
+  }
+
+  function handleAddTab(collectionId: string, url: string) {
+    const id = nanoid();
+    const now = Date.now();
+    void storage.patch((draft) => {
+      if (draft.collections[collectionId]) {
+        draft.collections[collectionId].tabs.push({
+          id,
+          url,
+          title: url,
+          faviconUrl: null,
+          addedAt: now,
+        });
+        draft.collections[collectionId].updatedAt = now;
+      }
+    });
+  }
+
+  function handleRemoveTab(collectionId: string, tabId: string) {
+    void storage.patch((draft) => {
+      if (draft.collections[collectionId]) {
+        draft.collections[collectionId].tabs = draft.collections[
+          collectionId
+        ].tabs.filter((t) => t.id !== tabId);
+        draft.collections[collectionId].updatedAt = Date.now();
+      }
+    });
+  }
+
+  function handleDuplicateTab(collectionId: string, tabId: string) {
+    const newId = nanoid();
+    const now = Date.now();
+    void storage.patch((draft) => {
+      const col = draft.collections[collectionId];
+      if (col) {
+        const source = col.tabs.find((t) => t.id === tabId);
+        if (source) {
+          col.tabs.push({ ...source, id: newId, addedAt: now });
+          col.updatedAt = now;
+        }
+      }
     });
   }
 
@@ -164,6 +208,9 @@ export function Workspace({ root, loading }: WorkspaceProps) {
                   onDeleteGroup={handleDeleteGroup}
                   onRenameCollection={handleRenameCollection}
                   onDeleteCollection={handleDeleteCollection}
+                  onAddTab={handleAddTab}
+                  onRemoveTab={handleRemoveTab}
+                  onDuplicateTab={handleDuplicateTab}
                 />
               );
             })}

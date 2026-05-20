@@ -1,9 +1,9 @@
-import { useState } from 'react';
-import type { KeyboardEvent } from 'react';
-import type { SavedCollection, SavedGroup } from '../../lib/storage/schema';
-import { CHROME_GROUP_COLOR_HEX } from '../../lib/constants/colors';
-import { Icon, ConfirmDialog } from '../shared';
-import { CollectionCard } from './CollectionCard';
+import { useState } from "react";
+import type { KeyboardEvent } from "react";
+import type { SavedCollection, SavedGroup } from "../../lib/storage/schema";
+import { CHROME_GROUP_COLOR_HEX } from "../../lib/constants/colors";
+import { Icon, ConfirmDialog } from "../shared";
+import { CollectionCard } from "./CollectionCard";
 
 interface GroupSectionProps {
   group: SavedGroup;
@@ -14,6 +14,9 @@ interface GroupSectionProps {
   onDeleteGroup: (id: string) => void;
   onRenameCollection: (id: string, name: string) => void;
   onDeleteCollection: (id: string) => void;
+  onAddTab: (collectionId: string, url: string) => void;
+  onRemoveTab: (collectionId: string, tabId: string) => void;
+  onDuplicateTab: (collectionId: string, tabId: string) => void;
 }
 
 /** Renders a named group section header with a collapsible collection card grid. */
@@ -26,18 +29,24 @@ export function GroupSection({
   onDeleteGroup,
   onRenameCollection,
   onDeleteCollection,
+  onAddTab,
+  onRemoveTab,
+  onDuplicateTab,
 }: GroupSectionProps) {
   const [open, setOpen] = useState(defaultOpen);
   const [renaming, setRenaming] = useState(false);
-  const [renameValue, setRenameValue] = useState('');
+  const [renameValue, setRenameValue] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const dotColor = group.color && group.color in CHROME_GROUP_COLOR_HEX
-    ? CHROME_GROUP_COLOR_HEX[group.color as keyof typeof CHROME_GROUP_COLOR_HEX]
-    : 'var(--fg-tertiary)';
+  const dotColor =
+    group.color && group.color in CHROME_GROUP_COLOR_HEX
+      ? CHROME_GROUP_COLOR_HEX[
+          group.color as keyof typeof CHROME_GROUP_COLOR_HEX
+        ]
+      : "var(--fg-tertiary)";
 
   const collectionCount = collections.length;
-  const collectionLabel = `${collectionCount} ${collectionCount === 1 ? 'collection' : 'collections'}`;
+  const collectionLabel = `${collectionCount} ${collectionCount === 1 ? "collection" : "collections"}`;
 
   function startRename() {
     setRenameValue(group.name);
@@ -51,13 +60,18 @@ export function GroupSection({
   }
 
   function handleRenameKey(e: KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'Enter') { e.preventDefault(); commitRename(); }
-    if (e.key === 'Escape') { setRenaming(false); }
+    if (e.key === "Enter") {
+      e.preventDefault();
+      commitRename();
+    }
+    if (e.key === "Escape") {
+      setRenaming(false);
+    }
   }
 
   return (
     <>
-      <section className={`tl-group${open ? '' : ' is-collapsed'}`}>
+      <section className={`tl-group${open ? "" : " is-collapsed"}`}>
         <header
           className="tl-group-head"
           onClick={() => !renaming && setOpen((v) => !v)}
@@ -65,7 +79,7 @@ export function GroupSection({
         >
           <button
             className="tl-group-chevron"
-            aria-label={open ? 'Collapse group' : 'Expand group'}
+            aria-label={open ? "Collapse group" : "Expand group"}
             onClick={(e) => {
               e.stopPropagation();
               setOpen((v) => !v);
@@ -94,7 +108,10 @@ export function GroupSection({
           ) : (
             <h2
               className="tl-group-name"
-              onDoubleClick={(e) => { e.stopPropagation(); startRename(); }}
+              onDoubleClick={(e) => {
+                e.stopPropagation();
+                startRename();
+              }}
             >
               {group.name}
             </h2>
@@ -108,7 +125,10 @@ export function GroupSection({
             className="tl-btn tl-btn-sm tl-btn-ghost"
             aria-label="Rename group"
             title="Rename group"
-            onClick={(e) => { e.stopPropagation(); startRename(); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              startRename();
+            }}
           >
             <Icon name="save" size={12} />
           </button>
@@ -117,7 +137,10 @@ export function GroupSection({
             className="tl-btn tl-btn-sm tl-btn-ghost"
             aria-label="New collection"
             title="New collection in this group"
-            onClick={(e) => { e.stopPropagation(); onNewCollection(group.id); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onNewCollection(group.id);
+            }}
           >
             <Icon name="plus" size={12} />
           </button>
@@ -126,14 +149,17 @@ export function GroupSection({
             className="tl-btn tl-btn-sm tl-btn-ghost"
             aria-label="Delete group"
             title="Delete group"
-            onClick={(e) => { e.stopPropagation(); setConfirmDelete(true); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              setConfirmDelete(true);
+            }}
           >
             <Icon name="trash" size={12} />
           </button>
         </header>
 
-        {open && (
-          collections.length === 0 ? (
+        {open &&
+          (collections.length === 0 ? (
             <p className="tl-group-empty">No collections in this group yet.</p>
           ) : (
             <div className="tl-grid">
@@ -143,19 +169,24 @@ export function GroupSection({
                   collection={c}
                   onRename={onRenameCollection}
                   onDelete={onDeleteCollection}
+                  onAddTab={onAddTab}
+                  onRemoveTab={onRemoveTab}
+                  onDuplicateTab={onDuplicateTab}
                 />
               ))}
             </div>
-          )
-        )}
+          ))}
       </section>
 
       {confirmDelete && (
         <ConfirmDialog
           title="Delete group"
-          message={`Delete "${group.name}" and all ${collectionCount} collection${collectionCount !== 1 ? 's' : ''}? This cannot be undone.`}
+          message={`Delete "${group.name}" and all ${collectionCount} collection${collectionCount !== 1 ? "s" : ""}? This cannot be undone.`}
           confirmLabel="Delete"
-          onConfirm={() => { setConfirmDelete(false); onDeleteGroup(group.id); }}
+          onConfirm={() => {
+            setConfirmDelete(false);
+            onDeleteGroup(group.id);
+          }}
           onCancel={() => setConfirmDelete(false)}
         />
       )}
