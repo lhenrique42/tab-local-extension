@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "postinstall": "node scripts/postinstall.mjs",
-    "dev": "wxt dev",
+    "dev": "wxt",
     "build": "wxt build",
     "zip": "wxt zip",
     "typecheck": "tsc --noEmit",

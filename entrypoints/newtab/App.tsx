@@ -1,11 +1,9 @@
 import { useTheme } from '../../composables/useTheme';
+import { useStorage } from '../../lib/hooks/useStorage';
+import { Workspace } from '../../components/workspace';
 
 export default function App() {
   useTheme();
-  return (
-    <div>
-      <h1>TabLocal — Workspace</h1>
-      <p>New Tab entrypoint (stub — implemented in TASK-005)</p>
-    </div>
-  );
+  const [root, loading] = useStorage();
+  return <Workspace root={root} loading={loading} />;
 }

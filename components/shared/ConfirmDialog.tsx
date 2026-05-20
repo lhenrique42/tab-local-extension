@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import type { KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { Button } from './Button';
 import './shared.css';
@@ -44,7 +45,7 @@ export function ConfirmDialog({
   }, []);
 
   // Trap focus within dialog
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+  const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key === 'Escape') {
       onCancel();
       return;
