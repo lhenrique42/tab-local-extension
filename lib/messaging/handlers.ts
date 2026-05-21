@@ -20,8 +20,80 @@ export const handleSaveWindow: MessageHandler<
     try {
         const rawTabs = await getCurrentWindowTabs();
         const httpTabs = rawTabs.filter((t) => HTTP_PATTERN.test(t.url));
-
         const now = Date.now();
+
+        const hasTabGroups =
+            typeof chrome !== "undefined" &&
+            typeof chrome.tabGroups !== "undefined";
+        const hasGroupedTabs =
+            hasTabGroups &&
+            httpTabs.some(
+                (t) => t.groupId != null && t.groupId !== -1,
+            );
+
+        if (hasGroupedTabs) {
+            const liveGroups = await queryTabGroups();
+            const groupById = new Map(liveGroups.map((g) => [g.id, g]));
+
+            const buckets = new Map<number, typeof httpTabs>();
+            for (const tab of httpTabs) {
+                const gid = tab.groupId ?? -1;
+                const bucket = buckets.get(gid) ?? [];
+                bucket.push(tab);
+                buckets.set(gid, bucket);
+            }
+
+            const collectionIds: string[] = [];
+            await storageAdapter.patch((draft) => {
+                if (!draft.groups[SESSIONS_GROUP_ID]) {
+                    draft.groups[SESSIONS_GROUP_ID] = {
+                        id: SESSIONS_GROUP_ID,
+                        name: "Saved Sessions",
+                        color: "blue",
+                        collectionIds: [],
+                        createdAt: now,
+                        updatedAt: now,
+                    };
+                }
+                for (const [chromeGid, tabs] of buckets.entries()) {
+                    const liveGroup =
+                        chromeGid !== -1 ? groupById.get(chromeGid) : null;
+                    const cid = nanoid();
+                    const name = liveGroup?.title
+                        ? liveGroup.title
+                        : chromeGid !== -1
+                          ? `${msg.payload.collectionName} – Group`
+                          : msg.payload.collectionName;
+                    draft.collections[cid] = {
+                        id: cid,
+                        name,
+                        groupId: SESSIONS_GROUP_ID,
+                        chromeGroupId: liveGroup ? chromeGid : undefined,
+                        chromeGroupColor: liveGroup
+                            ? (liveGroup.color as ChromeGroupColor)
+                            : null,
+                        tabs: tabs.map((t) => ({
+                            id: nanoid(),
+                            url: t.url,
+                            title: t.title,
+                            faviconUrl: t.faviconUrl,
+                            addedAt: now,
+                        })),
+                        createdAt: now,
+                        updatedAt: now,
+                    };
+                    collectionIds.push(cid);
+                    draft.groups[SESSIONS_GROUP_ID].collectionIds.unshift(cid);
+                }
+            });
+
+            return {
+                ok: true,
+                data: { collectionIds, tabCount: httpTabs.length },
+            };
+        }
+
+        // Fallback: single collection
         const savedTabs: SavedTab[] = httpTabs.map((t) => ({
             id: nanoid(),
             url: t.url,
@@ -32,11 +104,9 @@ export const handleSaveWindow: MessageHandler<
 
         const collectionId = nanoid();
         await storageAdapter.patch((draft) => {
-            // Always save to the dedicated sessions group (guaranteed to exist via migrations)
-            let groupId: string = SESSIONS_GROUP_ID;
-            if (!draft.groups[groupId]) {
-                draft.groups[groupId] = {
-                    id: groupId,
+            if (!draft.groups[SESSIONS_GROUP_ID]) {
+                draft.groups[SESSIONS_GROUP_ID] = {
+                    id: SESSIONS_GROUP_ID,
                     name: "Saved Sessions",
                     color: "blue",
                     collectionIds: [],
@@ -47,13 +117,13 @@ export const handleSaveWindow: MessageHandler<
             draft.collections[collectionId] = {
                 id: collectionId,
                 name: msg.payload.collectionName,
-                groupId,
+                groupId: SESSIONS_GROUP_ID,
                 chromeGroupColor: null,
                 tabs: savedTabs,
                 createdAt: now,
                 updatedAt: now,
             };
-            draft.groups[groupId].collectionIds.unshift(collectionId);
+            draft.groups[SESSIONS_GROUP_ID].collectionIds.unshift(collectionId);
         });
 
         return { ok: true, data: { collectionId, tabCount: savedTabs.length } };

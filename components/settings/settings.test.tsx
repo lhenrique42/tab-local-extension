@@ -126,15 +126,15 @@ describe("Settings", () => {
 
     // ── nativeGroupSyncEnabled ──
 
-    it("renders nativeGroupSyncEnabled toggle (off by default)", () => {
+    it("renders nativeGroupSyncEnabled toggle (on by default)", () => {
         render(<Settings />);
         const toggle = screen.getByRole("checkbox", {
             name: /sync native chrome tab groups/i,
         });
-        expect(toggle).not.toBeChecked();
+        expect(toggle).toBeChecked();
     });
 
-    it("calls storage.patch with nativeGroupSyncEnabled=true when toggled on", async () => {
+    it("calls storage.patch with nativeGroupSyncEnabled=false when toggled off", async () => {
         render(<Settings />);
         const toggle = screen.getByRole("checkbox", {
             name: /sync native chrome tab groups/i,
@@ -144,20 +144,20 @@ describe("Settings", () => {
         const patchFn = mockStoragePatch.mock.calls[0][0];
         const draft = defaultRoot();
         patchFn(draft);
-        expect(draft.settings.nativeGroupSyncEnabled).toBe(true);
+        expect(draft.settings.nativeGroupSyncEnabled).toBe(false);
     });
 
     // ── autoGroupByDomainEnabled ──
 
-    it("renders autoGroupByDomainEnabled toggle (off by default)", () => {
+    it("renders autoGroupByDomainEnabled toggle (true by default)", () => {
         render(<Settings />);
         const toggle = screen.getByRole("checkbox", {
             name: /auto-group tabs by domain/i,
         });
-        expect(toggle).not.toBeChecked();
+        expect(toggle).toBeChecked();
     });
 
-    it("calls storage.patch with autoGroupByDomainEnabled=true when toggled on", async () => {
+    it("calls storage.patch with autoGroupByDomainEnabled=false when toggled off", async () => {
         render(<Settings />);
         const toggle = screen.getByRole("checkbox", {
             name: /auto-group tabs by domain/i,
@@ -167,7 +167,7 @@ describe("Settings", () => {
         const patchFn = mockStoragePatch.mock.calls[0][0];
         const draft = defaultRoot();
         patchFn(draft);
-        expect(draft.settings.autoGroupByDomainEnabled).toBe(true);
+        expect(draft.settings.autoGroupByDomainEnabled).toBe(false);
     });
 
     it("renders Export Data and Import Data sections", () => {

@@ -1,6 +1,7 @@
 import React, {
     useState,
     useMemo,
+    useEffect,
     type CSSProperties,
     type HTMLAttributes,
 } from "react";
@@ -24,9 +25,11 @@ import {
     KeyboardSensor,
     PointerSensor,
     closestCenter,
+    pointerWithin,
     useSensor,
     useSensors,
     type DragEndEvent,
+    type DragOverEvent,
 } from "@dnd-kit/core";
 import {
     SortableContext,
@@ -91,6 +94,8 @@ export function Workspace({ root, loading, quotaWarning }: WorkspaceProps) {
     const [saving, setSaving] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
     const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
+    const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
+    const [overGroupId, setOverGroupId] = useState<string | null>(null);
 
     const groupDndSensors = useSensors(
         useSensor(PointerSensor),
@@ -98,6 +103,19 @@ export function Workspace({ root, loading, quotaWarning }: WorkspaceProps) {
             coordinateGetter: sortableKeyboardCoordinates,
         }),
     );
+
+    const collectionDndSensors = useSensors(
+        useSensor(PointerSensor),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        }),
+    );
+
+    useEffect(() => {
+        if (!root.settings.nativeGroupSyncEnabled) return;
+        void sendToBackground({ type: "SYNC_NATIVE_GROUPS", payload: {} });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     /* ---------------------------------------------------------------- */
     /*  Stats for header                                                  */
@@ -327,17 +345,24 @@ export function Workspace({ root, loading, quotaWarning }: WorkspaceProps) {
         });
     }
 
-    function handleDuplicateTab(collectionId: string, tabId: string) {
-        const newId = nanoid();
+    function handleDuplicateCollection(collectionId: string) {
         const now = Date.now();
         void storage.patch((draft) => {
-            const col = draft.collections[collectionId];
-            if (col) {
-                const source = col.tabs.find((t) => t.id === tabId);
-                if (source) {
-                    col.tabs.push({ ...source, id: newId, addedAt: now });
-                    col.updatedAt = now;
-                }
+            const src = draft.collections[collectionId];
+            if (!src) return;
+            const newId = nanoid();
+            draft.collections[newId] = {
+                ...src,
+                id: newId,
+                name: src.name + " (copy)",
+                tabs: src.tabs.map((t) => ({ ...t, id: nanoid() })),
+                createdAt: now,
+                updatedAt: now,
+            };
+            const group = src.groupId ? draft.groups[src.groupId] : null;
+            if (group) {
+                const idx = group.collectionIds.indexOf(collectionId);
+                group.collectionIds.splice(idx + 1, 0, newId);
             }
         });
     }
@@ -358,6 +383,82 @@ export function Workspace({ root, loading, quotaWarning }: WorkspaceProps) {
                 draft.groups[groupId].updatedAt = Date.now();
             }
         });
+    }
+
+    function handleMoveCollectionToGroup(
+        collectionId: string,
+        fromGroupId: string,
+        toGroupId: string,
+        newToGroupIds: string[],
+    ) {
+        void storage.patch((draft) => {
+            const now = Date.now();
+            draft.groups[fromGroupId].collectionIds = draft.groups[
+                fromGroupId
+            ].collectionIds.filter((id) => id !== collectionId);
+            draft.groups[fromGroupId].updatedAt = now;
+            draft.groups[toGroupId].collectionIds = newToGroupIds;
+            draft.groups[toGroupId].updatedAt = now;
+            draft.collections[collectionId].groupId = toGroupId;
+            draft.collections[collectionId].updatedAt = now;
+        });
+    }
+
+    function handleCollectionDragEnd(event: DragEndEvent) {
+        setActiveCollectionId(null);
+        setOverGroupId(null);
+        const { active, over } = event;
+        if (!over) return;
+
+        const activeId = String(active.id);
+        const overId = String(over.id);
+
+        const fromGroupId = active.data.current?.sortable
+            ?.containerId as string | undefined;
+        const toGroupId: string | undefined =
+            (over.data.current?.sortable?.containerId as string | undefined) ??
+            (over.data.current?.type === "group-droppable"
+                ? (over.data.current.groupId as string)
+                : undefined);
+
+        if (!fromGroupId || !toGroupId) return;
+
+        if (fromGroupId === toGroupId && activeId !== overId) {
+            const ids = root.groups[fromGroupId]?.collectionIds ?? [];
+            const oldIndex = ids.indexOf(activeId);
+            const newIndex = ids.indexOf(overId);
+            if (oldIndex === -1 || newIndex === -1) return;
+            handleReorderCollections(
+                fromGroupId,
+                arrayMove(ids, oldIndex, newIndex),
+            );
+        } else if (fromGroupId !== toGroupId) {
+            const toIds = [
+                ...(root.groups[toGroupId]?.collectionIds ?? []),
+            ].filter((id) => id !== activeId);
+            const overIndex = toIds.indexOf(overId);
+            if (overIndex !== -1) {
+                toIds.splice(overIndex, 0, activeId);
+            } else {
+                toIds.push(activeId);
+            }
+            handleMoveCollectionToGroup(
+                activeId,
+                fromGroupId,
+                toGroupId,
+                toIds,
+            );
+        }
+    }
+
+    function handleCollectionDragOver(event: DragOverEvent) {
+        const { over } = event;
+        const containerId =
+            (over?.data.current?.sortable?.containerId as string | undefined) ??
+            (over?.data.current?.type === "group-droppable"
+                ? (over.data.current.groupId as string)
+                : undefined);
+        setOverGroupId(containerId ?? null);
     }
 
     async function handleRestore(collectionId: string) {
@@ -415,7 +516,7 @@ export function Workspace({ root, loading, quotaWarning }: WorkspaceProps) {
     const showQuotaWarning = Boolean(quotaWarning) && !quotaDismissed;
 
     return (
-        <div className={`tl-app${sidebarOpen ? "" : " tl-app--no-sidebar"}`}>
+        <div className={`tl-app${sidebarOpen ? "" : " tl-app--sidebar-collapsed"}`}>
             <Header {...headerProps} />
 
             {showQuotaWarning && (
@@ -458,9 +559,10 @@ export function Workspace({ root, loading, quotaWarning }: WorkspaceProps) {
                 </div>
             )}
 
-            {sidebarOpen && (
-                <LiveTabsSidebar onToggle={() => setSidebarOpen(false)} />
-            )}
+            <LiveTabsSidebar
+                collapsed={!sidebarOpen}
+                onToggle={() => setSidebarOpen((v) => !v)}
+            />
 
             <main className="tl-workspace">
                 <div className="tl-workspace-head">
@@ -475,16 +577,6 @@ export function Workspace({ root, loading, quotaWarning }: WorkspaceProps) {
                         <Icon name="plus" size={12} />
                         New Group
                     </button>
-                    {!sidebarOpen && (
-                        <button
-                            className="tl-btn tl-btn-sm tl-btn-ghost"
-                            aria-label="Show sidebar"
-                            onClick={() => setSidebarOpen(true)}
-                        >
-                            <Icon name="layers" size={14} />
-                            Open tabs
-                        </button>
-                    )}
                 </div>
 
                 {visibleGroups.length === 0 ? (
@@ -542,60 +634,102 @@ export function Workspace({ root, loading, quotaWarning }: WorkspaceProps) {
                             items={orderedGroupIds}
                             strategy={verticalListSortingStrategy}
                         >
-                            <div className="tl-groups">
-                                {visibleGroups.map((group) => {
-                                    const collections = group.collectionIds
-                                        .map((id) => root.collections[id])
-                                        .filter(Boolean);
-                                    return (
-                                        <SortableGroupWrapper
-                                            key={group.id}
-                                            id={group.id}
-                                        >
-                                            {(dragHandleProps) => (
-                                                <GroupSection
-                                                    group={group}
-                                                    collections={collections}
-                                                    dragHandleProps={
-                                                        dragHandleProps ??
-                                                        undefined
-                                                    }
-                                                    onNewCollection={
-                                                        handleNewCollection
-                                                    }
-                                                    onRenameGroup={
-                                                        handleRenameGroup
-                                                    }
-                                                    onDeleteGroup={
-                                                        handleDeleteGroup
-                                                    }
-                                                    onRenameCollection={
-                                                        handleRenameCollection
-                                                    }
-                                                    onDeleteCollection={
-                                                        handleDeleteCollection
-                                                    }
-                                                    onAddTab={handleAddTab}
-                                                    onRemoveTab={
-                                                        handleRemoveTab
-                                                    }
-                                                    onDuplicateTab={
-                                                        handleDuplicateTab
-                                                    }
-                                                    onEditTab={handleEditTab}
-                                                    onReorderTabs={
-                                                        handleReorderTabs
-                                                    }
-                                                    onReorderCollections={
-                                                        handleReorderCollections
-                                                    }
-                                                    onRestore={handleRestore}
-                                                />
-                                            )}
-                                        </SortableGroupWrapper>
-                                    );
-                                })}
-                            </div>
+                            <DndContext
+                                sensors={collectionDndSensors}
+                                collisionDetection={pointerWithin}
+                                onDragStart={(e) =>
+                                    setActiveCollectionId(String(e.active.id))
+                                }
+                                onDragOver={handleCollectionDragOver}
+                                onDragEnd={handleCollectionDragEnd}
+                                onDragCancel={() => {
+                                    setActiveCollectionId(null);
+                                    setOverGroupId(null);
+                                }}
+                            >
+                                <div className="tl-groups">
+                                    {visibleGroups.map((group) => {
+                                        const collections = group.collectionIds
+                                            .map((id) => root.collections[id])
+                                            .filter(Boolean);
+                                        return (
+                                            <SortableGroupWrapper
+                                                key={group.id}
+                                                id={group.id}
+                                            >
+                                                {(dragHandleProps) => (
+                                                    <GroupSection
+                                                        group={group}
+                                                        collections={
+                                                            collections
+                                                        }
+                                                        dragHandleProps={
+                                                            dragHandleProps ??
+                                                            undefined
+                                                        }
+                                                        activeCollectionId={
+                                                            activeCollectionId
+                                                        }
+                                                        isCollectionDropTarget={
+                                                            overGroupId ===
+                                                                group.id &&
+                                                            !!activeCollectionId &&
+                                                            root.collections[
+                                                                activeCollectionId
+                                                            ]?.groupId !==
+                                                                group.id
+                                                        }
+                                                        onNewCollection={
+                                                            handleNewCollection
+                                                        }
+                                                        onRenameGroup={
+                                                            handleRenameGroup
+                                                        }
+                                                        onDeleteGroup={
+                                                            handleDeleteGroup
+                                                        }
+                                                        onRenameCollection={
+                                                            handleRenameCollection
+                                                        }
+                                                        onDeleteCollection={
+                                                            handleDeleteCollection
+                                                        }
+                                                        onAddTab={handleAddTab}
+                                                        onRemoveTab={
+                                                            handleRemoveTab
+                                                        }
+                                                        onDuplicateCollection={
+                                                            handleDuplicateCollection
+                                                        }
+                                                        onEditTab={handleEditTab}
+                                                        onReorderTabs={
+                                                            handleReorderTabs
+                                                        }
+                                                        onRestore={handleRestore}
+                                                    />
+                                                )}
+                                            </SortableGroupWrapper>
+                                        );
+                                    })}
+                                </div>
+                                <DragOverlay>
+                                    {activeCollectionId
+                                        ? (() => {
+                                              const col =
+                                                  root.collections[
+                                                      activeCollectionId
+                                                  ];
+                                              return col ? (
+                                                  <div className="tl-drag-overlay-card">
+                                                      <span className="tl-collection-title">
+                                                          {col.name}
+                                                      </span>
+                                                  </div>
+                                              ) : null;
+                                          })()
+                                        : null}
+                                </DragOverlay>
+                            </DndContext>
                         </SortableContext>
                         <DragOverlay>
                             {activeGroupId

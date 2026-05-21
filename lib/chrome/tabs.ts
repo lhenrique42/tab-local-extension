@@ -5,6 +5,7 @@ export interface TabInfo {
     faviconUrl: string | null;
     windowId: number;
     active: boolean;
+    groupId?: number;
 }
 
 /**
@@ -25,6 +26,7 @@ export async function getCurrentWindowTabs(): Promise<TabInfo[]> {
                 faviconUrl: t.favIconUrl ?? null,
                 windowId: t.windowId,
                 active: t.active ?? false,
+                groupId: t.groupId,
             }));
     } catch (err) {
         console.error("[tabs] getCurrentWindowTabs failed:", err);

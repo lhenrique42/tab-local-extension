@@ -151,14 +151,14 @@ describe("useLiveTabs", () => {
 describe("LiveTabsSidebar", () => {
     it("renders one row per tab", async () => {
         mockGetCurrentWindowTabs.mockResolvedValueOnce(sampleTabs);
-        render(<LiveTabsSidebar onToggle={vi.fn()} />);
+        render(<LiveTabsSidebar collapsed={false} onToggle={vi.fn()} />);
         await act(async () => {});
         expect(screen.getAllByRole("listitem")).toHaveLength(2);
     });
 
     it("shows EmptyState when no tabs are open", async () => {
         mockGetCurrentWindowTabs.mockResolvedValueOnce([]);
-        render(<LiveTabsSidebar onToggle={vi.fn()} />);
+        render(<LiveTabsSidebar collapsed={false} onToggle={vi.fn()} />);
         await act(async () => {});
         expect(screen.getByText("No tabs")).toBeInTheDocument();
     });
@@ -166,17 +166,17 @@ describe("LiveTabsSidebar", () => {
     it("calls onToggle when hide button is clicked", async () => {
         mockGetCurrentWindowTabs.mockResolvedValueOnce(sampleTabs);
         const onToggle = vi.fn();
-        render(<LiveTabsSidebar onToggle={onToggle} />);
+        render(<LiveTabsSidebar collapsed={false} onToggle={onToggle} />);
         await act(async () => {});
         await userEvent.click(
-            screen.getByRole("button", { name: "Hide sidebar" }),
+            screen.getByRole("button", { name: "Collapse sidebar" }),
         );
         expect(onToggle).toHaveBeenCalledOnce();
     });
 
     it("marks the active tab row with is-active class", async () => {
         mockGetCurrentWindowTabs.mockResolvedValueOnce(sampleTabs);
-        render(<LiveTabsSidebar onToggle={vi.fn()} />);
+        render(<LiveTabsSidebar collapsed={false} onToggle={vi.fn()} />);
         await act(async () => {});
         const rows = screen.getAllByRole("listitem");
         expect(rows[0].className).toContain("is-active");
@@ -185,7 +185,7 @@ describe("LiveTabsSidebar", () => {
 
     it("renders the Save all as collection button", async () => {
         mockGetCurrentWindowTabs.mockResolvedValueOnce(sampleTabs);
-        render(<LiveTabsSidebar onToggle={vi.fn()} />);
+        render(<LiveTabsSidebar collapsed={false} onToggle={vi.fn()} />);
         await act(async () => {});
         expect(
             screen.getByRole("button", { name: /save all as collection/i }),
@@ -194,7 +194,7 @@ describe("LiveTabsSidebar", () => {
 
     it("calls sendToBackground with SAVE_WINDOW when Save all is clicked", async () => {
         mockGetCurrentWindowTabs.mockResolvedValueOnce(sampleTabs);
-        render(<LiveTabsSidebar onToggle={vi.fn()} />);
+        render(<LiveTabsSidebar collapsed={false} onToggle={vi.fn()} />);
         await act(async () => {});
 
         await userEvent.click(
@@ -210,7 +210,7 @@ describe("LiveTabsSidebar", () => {
 
     it("renders the storage meter", async () => {
         mockGetCurrentWindowTabs.mockResolvedValueOnce([]);
-        render(<LiveTabsSidebar onToggle={vi.fn()} />);
+        render(<LiveTabsSidebar collapsed={false} onToggle={vi.fn()} />);
         await act(async () => {});
         expect(screen.getByRole("progressbar")).toBeInTheDocument();
     });

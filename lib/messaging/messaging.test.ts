@@ -349,7 +349,7 @@ describe("handleRestoreCollection", () => {
                         active: true,
                         pinned: false,
                         incognito: false,
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                         
                     } as any,
                 ],
             });

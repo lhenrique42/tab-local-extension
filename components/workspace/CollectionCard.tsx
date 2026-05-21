@@ -18,7 +18,7 @@ interface CollectionCardProps {
         faviconUrl?: string | null,
     ) => void;
     onRemoveTab: (collectionId: string, tabId: string) => void;
-    onDuplicateTab: (collectionId: string, tabId: string) => void;
+    onDuplicate?: (id: string) => void;
     onEditTab?: (
         collectionId: string,
         tabId: string,
@@ -40,7 +40,7 @@ export const CollectionCard = memo(function CollectionCard({
     onDelete,
     onAddTab,
     onRemoveTab,
-    onDuplicateTab,
+    onDuplicate,
     onEditTab,
     onReorderTabs,
     onRestore,
@@ -195,6 +195,7 @@ export const CollectionCard = memo(function CollectionCard({
                         ) : (
                             <h3
                                 className="tl-collection-title"
+                                title={collection.name}
                                 onDoubleClick={(e) => {
                                     e.stopPropagation();
                                     startRename();
@@ -246,6 +247,19 @@ export const CollectionCard = memo(function CollectionCard({
                         >
                             <Icon name="pencil" size={12} />
                         </button>
+                        {onDuplicate && (
+                            <button
+                                className="tl-btn tl-btn-sm tl-btn-ghost"
+                                aria-label="Duplicate collection"
+                                title="Duplicate"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onDuplicate(collection.id);
+                                }}
+                            >
+                                <Icon name="copy" size={12} />
+                            </button>
+                        )}
                         <button
                             className="tl-btn tl-btn-sm tl-btn-ghost"
                             aria-label="Delete collection"
@@ -288,9 +302,6 @@ export const CollectionCard = memo(function CollectionCard({
                                     tabs={collection.tabs}
                                     onRemove={(tabId) =>
                                         setConfirmRemoveTabId(tabId)
-                                    }
-                                    onDuplicate={(tabId) =>
-                                        onDuplicateTab(collection.id, tabId)
                                     }
                                     onEdit={
                                         onEditTab

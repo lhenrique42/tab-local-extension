@@ -59,13 +59,12 @@
   grid-template-rows: 56px 1fr;
   min-height: 100vh;
 }
-.tl-app--no-sidebar {
-  grid-template-columns: 1fr;
+.tl-app--sidebar-collapsed {
+  grid-template-columns: 40px 1fr;
 }
 .tl-app .tl-header { grid-column: 1 / -1; }
 .tl-app .tl-sidebar { grid-column: 1; grid-row: 2; overflow-y: auto; }
 .tl-app .tl-workspace { grid-column: 2; grid-row: 2; }
-.tl-app--no-sidebar .tl-workspace { grid-column: 1; }
 
 /* =========================================================
    Header
@@ -315,6 +314,11 @@
 .tl-group-head:hover .tl-group-actions { opacity: 1; }
 .tl-group.is-collapsed .tl-group-head { border-bottom-color: transparent; }
 .tl-group.is-collapsed { gap: 0; }
+.tl-group.is-collection-drop-target {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: var(--radius-lg);
+}
 
 /* =========================================================
    Collection card
@@ -382,6 +386,11 @@
 }
 .tl-collection:hover .tl-collection-head-right,
 .tl-collection.is-expanded .tl-collection-head-right { opacity: 1; }
+.tl-collection.is-expanded .tl-collection-title {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: unset;
+}
 
 .tl-collection-list {
   display: flex;
@@ -565,6 +574,19 @@
   gap: var(--space-4);
   background: color-mix(in srgb, var(--bg) 92%, transparent);
   overflow-y: auto;
+}
+
+.tl-sidebar--collapsed {
+  overflow: hidden;
+  padding: var(--space-4) 0;
+  align-items: center;
+}
+
+.tl-sidebar-expand-btn {
+  color: var(--fg-tertiary);
+}
+.tl-sidebar-expand-btn:hover {
+  color: var(--fg);
 }
 
 .tl-side-section {

@@ -1,21 +1,9 @@
 import { useState } from "react";
 import type { CSSProperties, HTMLAttributes, KeyboardEvent } from "react";
-import {
-    DndContext,
-    DragOverlay,
-    KeyboardSensor,
-    PointerSensor,
-    closestCenter,
-    useSensor,
-    useSensors,
-    type DragEndEvent,
-    type DragStartEvent,
-} from "@dnd-kit/core";
+import { useDroppable } from "@dnd-kit/core";
 import {
     SortableContext,
-    arrayMove,
     rectSortingStrategy,
-    sortableKeyboardCoordinates,
     useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -33,6 +21,8 @@ interface GroupSectionProps {
     collections: SavedCollection[];
     defaultOpen?: boolean;
     dragHandleProps?: HTMLAttributes<HTMLButtonElement>;
+    activeCollectionId?: string | null;
+    isCollectionDropTarget?: boolean;
     onNewCollection: (groupId: string) => void;
     onRenameGroup: (id: string, name: string) => void;
     onDeleteGroup: (id: string) => void;
@@ -45,14 +35,13 @@ interface GroupSectionProps {
         faviconUrl?: string | null,
     ) => void;
     onRemoveTab: (collectionId: string, tabId: string) => void;
-    onDuplicateTab: (collectionId: string, tabId: string) => void;
+    onDuplicateCollection?: (collectionId: string) => void;
     onEditTab?: (
         collectionId: string,
         tabId: string,
         newUrl: string,
         newTitle: string,
     ) => void;
-    onReorderCollections: (groupId: string, newIds: string[]) => void;
     onReorderTabs: (collectionId: string, newTabs: SavedTab[]) => void;
     onRestore: (collectionId: string) => Promise<void>;
 }
@@ -75,7 +64,7 @@ interface SortableCollectionCardProps {
         faviconUrl?: string | null,
     ) => void;
     onRemoveTab: (collectionId: string, tabId: string) => void;
-    onDuplicateTab: (collectionId: string, tabId: string) => void;
+    onDuplicate?: (id: string) => void;
     onEditTab?: (
         collectionId: string,
         tabId: string,
@@ -135,6 +124,8 @@ export function GroupSection({
     collections,
     defaultOpen = true,
     dragHandleProps,
+    activeCollectionId,
+    isCollectionDropTarget = false,
     onNewCollection,
     onRenameGroup,
     onDeleteGroup,
@@ -142,9 +133,8 @@ export function GroupSection({
     onDeleteCollection,
     onAddTab,
     onRemoveTab,
-    onDuplicateTab,
+    onDuplicateCollection,
     onEditTab,
-    onReorderCollections,
     onReorderTabs,
     onRestore,
 }: GroupSectionProps) {
@@ -152,31 +142,11 @@ export function GroupSection({
     const [renaming, setRenaming] = useState(false);
     const [renameValue, setRenameValue] = useState("");
     const [confirmDelete, setConfirmDelete] = useState(false);
-    const [activeCollectionId, setActiveCollectionId] = useState<string | null>(
-        null,
-    );
 
-    const sensors = useSensors(
-        useSensor(PointerSensor),
-        useSensor(KeyboardSensor, {
-            coordinateGetter: sortableKeyboardCoordinates,
-        }),
-    );
-
-    function handleCollectionDragStart(event: DragStartEvent) {
-        setActiveCollectionId(String(event.active.id));
-    }
-
-    function handleCollectionDragEnd(event: DragEndEvent) {
-        setActiveCollectionId(null);
-        const { active, over } = event;
-        if (!over || active.id === over.id) return;
-        const ids = collections.map((c) => c.id);
-        const oldIndex = ids.indexOf(String(active.id));
-        const newIndex = ids.indexOf(String(over.id));
-        if (oldIndex === -1 || newIndex === -1) return;
-        onReorderCollections(group.id, arrayMove(ids, oldIndex, newIndex));
-    }
+    const { setNodeRef: setDropRef } = useDroppable({
+        id: `group-droppable-${group.id}`,
+        data: { type: "group-droppable", groupId: group.id },
+    });
 
     const dotColor =
         group.color && group.color in CHROME_GROUP_COLOR_HEX
@@ -211,13 +181,12 @@ export function GroupSection({
     return (
         <>
             <section
-                className={`tl-group${open ? "" : " is-collapsed"}`}
+                className={`tl-group${open ? "" : " is-collapsed"}${isCollectionDropTarget ? " is-collection-drop-target" : ""}`}
                 style={{ "--group-color": dotColor } as CSSProperties}
             >
                 <header
                     className="tl-group-head"
                     onClick={() => !renaming && setOpen((v) => !v)}
-                    aria-expanded={open}
                 >
                     {dragHandleProps && (
                         <button
@@ -233,6 +202,7 @@ export function GroupSection({
                     <button
                         className="tl-group-chevron"
                         aria-label={open ? "Collapse group" : "Expand group"}
+                        aria-expanded={open}
                         onClick={(e) => {
                             e.stopPropagation();
                             setOpen((v) => !v);
@@ -318,68 +288,40 @@ export function GroupSection({
 
                 {open &&
                     (collections.length === 0 ? (
-                        <p className="tl-group-empty">
+                        <p
+                            className="tl-group-empty"
+                            ref={setDropRef}
+                        >
                             No collections in this group yet.
                         </p>
                     ) : (
-                        <DndContext
-                            sensors={sensors}
-                            collisionDetection={closestCenter}
-                            onDragStart={handleCollectionDragStart}
-                            onDragEnd={handleCollectionDragEnd}
-                            accessibility={{
-                                screenReaderInstructions: {
-                                    draggable:
-                                        "To reorder, press Space or Enter to start dragging. Use arrow keys to move. Press Space or Enter to drop.",
-                                },
-                            }}
+                        <SortableContext
+                            id={group.id}
+                            items={collections.map((c) => c.id)}
+                            strategy={rectSortingStrategy}
                         >
-                            <SortableContext
-                                items={collections.map((c) => c.id)}
-                                strategy={rectSortingStrategy}
-                            >
-                                <div className="tl-grid">
-                                    {collections.map((c) => (
-                                        <SortableCollectionCard
-                                            key={c.id}
-                                            collection={c}
-                                            groupName={group.name}
-                                            groupColor={dotColor}
-                                            isDragging={
-                                                activeCollectionId === c.id
-                                            }
-                                            onRename={onRenameCollection}
-                                            onDelete={onDeleteCollection}
-                                            onAddTab={onAddTab}
-                                            onRemoveTab={onRemoveTab}
-                                            onDuplicateTab={onDuplicateTab}
-                                            onEditTab={onEditTab}
-                                            onReorderTabs={onReorderTabs}
-                                            onRestore={onRestore}
-                                        />
-                                    ))}
-                                </div>
-                            </SortableContext>
-                            <DragOverlay>
-                                {activeCollectionId
-                                    ? (() => {
-                                          const activeCollection =
-                                              collections.find(
-                                                  (c) =>
-                                                      c.id ===
-                                                      activeCollectionId,
-                                              );
-                                          return activeCollection ? (
-                                              <div className="tl-drag-overlay-card">
-                                                  <span className="tl-collection-title">
-                                                      {activeCollection.name}
-                                                  </span>
-                                              </div>
-                                          ) : null;
-                                      })()
-                                    : null}
-                            </DragOverlay>
-                        </DndContext>
+                            <div className="tl-grid" ref={setDropRef}>
+                                {collections.map((c) => (
+                                    <SortableCollectionCard
+                                        key={c.id}
+                                        collection={c}
+                                        groupName={group.name}
+                                        groupColor={dotColor}
+                                        isDragging={
+                                            activeCollectionId === c.id
+                                        }
+                                        onRename={onRenameCollection}
+                                        onDelete={onDeleteCollection}
+                                        onAddTab={onAddTab}
+                                        onRemoveTab={onRemoveTab}
+                                        onDuplicate={onDuplicateCollection}
+                                        onEditTab={onEditTab}
+                                        onReorderTabs={onReorderTabs}
+                                        onRestore={onRestore}
+                                    />
+                                ))}
+                            </div>
+                        </SortableContext>
                     ))}
             </section>
 

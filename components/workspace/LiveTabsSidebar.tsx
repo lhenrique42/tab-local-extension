@@ -80,11 +80,12 @@ function SidebarTabRow({ tab }: SidebarTabRowProps) {
 }
 
 interface LiveTabsSidebarProps {
+    collapsed: boolean;
     onToggle: () => void;
 }
 
 /** Sidebar showing currently open tabs, refreshing on Chrome tab events. */
-export function LiveTabsSidebar({ onToggle }: LiveTabsSidebarProps) {
+export function LiveTabsSidebar({ collapsed, onToggle }: LiveTabsSidebarProps) {
     const tabs = useLiveTabs();
     const [saving, setSaving] = useState(false);
     const [usedMb, setUsedMb] = useState(0);
@@ -108,6 +109,24 @@ export function LiveTabsSidebar({ onToggle }: LiveTabsSidebarProps) {
         setSaving(false);
     }
 
+    if (collapsed) {
+        return (
+            <aside
+                className="tl-sidebar tl-sidebar--collapsed"
+                aria-label="Open tabs (collapsed)"
+            >
+                <button
+                    className="tl-btn tl-btn-icon tl-btn-sm tl-btn-ghost tl-sidebar-expand-btn"
+                    aria-label="Expand sidebar"
+                    onClick={onToggle}
+                    title="Expand sidebar"
+                >
+                    <Icon name="chevron-right" size={14} />
+                </button>
+            </aside>
+        );
+    }
+
     return (
         <aside className="tl-sidebar" aria-label="Open tabs">
             <div className="tl-side-section">
@@ -118,9 +137,9 @@ export function LiveTabsSidebar({ onToggle }: LiveTabsSidebarProps) {
                     </span>
                     <button
                         className="tl-btn tl-btn-icon tl-btn-sm tl-btn-ghost"
-                        aria-label="Hide sidebar"
+                        aria-label="Collapse sidebar"
                         onClick={onToggle}
-                        title="Hide sidebar"
+                        title="Collapse sidebar"
                     >
                         <Icon name="x" size={14} />
                     </button>

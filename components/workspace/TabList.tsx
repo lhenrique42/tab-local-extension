@@ -131,7 +131,6 @@ export function Favicon({ tab, size }: FaviconProps) {
 interface TabRowContentProps {
     tab: SavedTab;
     onRemove?: (tabId: string) => void;
-    onDuplicate?: (tabId: string) => void;
     onStartEdit?: () => void;
     isDragging?: boolean;
     dragHandleProps?: HTMLAttributes<HTMLButtonElement>;
@@ -140,12 +139,11 @@ interface TabRowContentProps {
 const TabRowContent = memo(function TabRowContent({
     tab,
     onRemove,
-    onDuplicate,
     onStartEdit,
     isDragging,
     dragHandleProps,
 }: TabRowContentProps) {
-    const hasActions = Boolean(onRemove ?? onDuplicate ?? onStartEdit);
+    const hasActions = Boolean(onRemove ?? onStartEdit);
     return (
         <div
             className={`tl-tab-row is-dense${isDragging ? " is-dragging" : ""}`}
@@ -204,41 +202,6 @@ const TabRowContent = memo(function TabRowContent({
                             </svg>
                         </button>
                     )}
-                    {onDuplicate && (
-                        <button
-                            className="tl-btn tl-btn-xs tl-btn-ghost"
-                            aria-label={`Duplicate tab ${tab.title}`}
-                            title="Duplicate"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onDuplicate(tab.id);
-                            }}
-                        >
-                            <svg
-                                width="11"
-                                height="11"
-                                viewBox="0 0 14 14"
-                                fill="none"
-                                aria-hidden="true"
-                            >
-                                <rect
-                                    x="4"
-                                    y="4"
-                                    width="9"
-                                    height="9"
-                                    rx="1.5"
-                                    stroke="currentColor"
-                                    strokeWidth="1.5"
-                                />
-                                <path
-                                    d="M1 10V2a1 1 0 0 1 1-1h8"
-                                    stroke="currentColor"
-                                    strokeWidth="1.5"
-                                    strokeLinecap="round"
-                                />
-                            </svg>
-                        </button>
-                    )}
                     {onRemove && (
                         <button
                             className="tl-btn tl-btn-xs tl-btn-ghost tl-btn-danger-ghost"
@@ -279,14 +242,12 @@ const TabRowContent = memo(function TabRowContent({
 interface SortableTabRowProps {
     tab: SavedTab;
     onRemove?: (tabId: string) => void;
-    onDuplicate?: (tabId: string) => void;
     onEdit?: (tabId: string, newUrl: string, newTitle: string) => void;
 }
 
 const SortableTabRow = memo(function SortableTabRow({
     tab,
     onRemove,
-    onDuplicate,
     onEdit,
 }: SortableTabRowProps) {
     const [editing, setEditing] = useState(false);
@@ -408,7 +369,6 @@ const SortableTabRow = memo(function SortableTabRow({
             <TabRowContent
                 tab={tab}
                 onRemove={onRemove}
-                onDuplicate={onDuplicate}
                 onStartEdit={onEdit ? startEdit : undefined}
                 dragHandleProps={
                     {
@@ -428,11 +388,10 @@ const SortableTabRow = memo(function SortableTabRow({
 interface InnerListProps {
     tabs: SavedTab[];
     onRemove?: (tabId: string) => void;
-    onDuplicate?: (tabId: string) => void;
     onEdit?: (tabId: string, newUrl: string, newTitle: string) => void;
 }
 
-function StandardList({ tabs, onRemove, onDuplicate, onEdit }: InnerListProps) {
+function StandardList({ tabs, onRemove, onEdit }: InnerListProps) {
     return (
         <div role="list" aria-label="Saved tabs">
             {tabs.map((tab) => (
@@ -440,7 +399,6 @@ function StandardList({ tabs, onRemove, onDuplicate, onEdit }: InnerListProps) {
                     key={tab.id}
                     tab={tab}
                     onRemove={onRemove}
-                    onDuplicate={onDuplicate}
                     onEdit={onEdit}
                 />
             ))}
@@ -455,7 +413,6 @@ function StandardList({ tabs, onRemove, onDuplicate, onEdit }: InnerListProps) {
 function VirtualizedList({
     tabs,
     onRemove,
-    onDuplicate,
     onEdit,
 }: InnerListProps) {
     const parentRef = useRef<HTMLDivElement>(null);
@@ -498,7 +455,6 @@ function VirtualizedList({
                             <SortableTabRow
                                 tab={tab}
                                 onRemove={onRemove}
-                                onDuplicate={onDuplicate}
                                 onEdit={onEdit}
                             />
                         </div>
@@ -516,7 +472,6 @@ function VirtualizedList({
 interface TabListProps {
     tabs: SavedTab[];
     onRemove?: (tabId: string) => void;
-    onDuplicate?: (tabId: string) => void;
     onEdit?: (tabId: string, newUrl: string, newTitle: string) => void;
     onReorder?: (newOrder: SavedTab[]) => void;
 }
@@ -525,7 +480,6 @@ interface TabListProps {
 export function TabList({
     tabs,
     onRemove,
-    onDuplicate,
     onEdit,
     onReorder,
 }: TabListProps) {
@@ -576,14 +530,12 @@ export function TabList({
                     <VirtualizedList
                         tabs={tabs}
                         onRemove={onRemove}
-                        onDuplicate={onDuplicate}
                         onEdit={onEdit}
                     />
                 ) : (
                     <StandardList
                         tabs={tabs}
                         onRemove={onRemove}
-                        onDuplicate={onDuplicate}
                         onEdit={onEdit}
                     />
                 )}

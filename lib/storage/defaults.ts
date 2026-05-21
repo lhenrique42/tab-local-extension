@@ -20,8 +20,8 @@ export function defaultRoot(): StorageRoot {
         settings: {
             theme: "dark",
             defaultRestoreMode: "active-all",
-            autoGroupByDomainEnabled: false,
-            nativeGroupSyncEnabled: false,
+            autoGroupByDomainEnabled: true,
+            nativeGroupSyncEnabled: true,
         },
         groupOrder: [SESSIONS_GROUP_ID],
     };

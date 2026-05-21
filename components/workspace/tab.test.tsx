@@ -71,7 +71,6 @@ const noopCardHandlers = {
     onDelete: vi.fn(),
     onAddTab: vi.fn(),
     onRemoveTab: vi.fn(),
-    onDuplicateTab: vi.fn(),
     onReorderTabs: vi.fn(),
     onRestore: vi.fn().mockResolvedValue(undefined),
 };
@@ -274,31 +273,6 @@ describe("CollectionCard — Tab Remove", () => {
 });
 
 /* ------------------------------------------------------------------ */
-/*  CollectionCard — Tab Duplicate                                       */
-/* ------------------------------------------------------------------ */
-
-describe("CollectionCard — Tab Duplicate", () => {
-    it("calls onDuplicateTab when Duplicate is clicked", async () => {
-        const onDuplicateTab = vi.fn();
-        const collection = makeCollection({
-            tabs: [makeTab({ id: "t1", title: "Alpha" })],
-        });
-        render(
-            <CollectionCard
-                collection={collection}
-                {...noopCardHandlers}
-                onDuplicateTab={onDuplicateTab}
-            />,
-        );
-        await expandCard();
-        await userEvent.click(
-            screen.getByRole("button", { name: "Duplicate tab Alpha" }),
-        );
-        expect(onDuplicateTab).toHaveBeenCalledWith("c1", "t1");
-    });
-});
-
-/* ------------------------------------------------------------------ */
 /*  Workspace — storage.patch tab mutations                             */
 /* ------------------------------------------------------------------ */
 
@@ -346,47 +320,4 @@ describe("Workspace — tab storage.patch mutations", () => {
         expect(patchSpy).toHaveBeenCalled();
     });
 
-    it("patches storage when tab is duplicated", async () => {
-        const collection = makeCollection({
-            tabs: [makeTab({ id: "t1", title: "ToDup" })],
-        });
-        const root = makeRoot(collection);
-        await storage.patch((d) => {
-            d.groups = { ...root.groups };
-            d.collections = { ...root.collections };
-        });
-        const patchSpy = vi.spyOn(storage, "patch");
-        render(<Workspace root={root} loading={false} />);
-
-        await userEvent.click(screen.getByRole("article"));
-        await userEvent.click(
-            screen.getByRole("button", { name: "Duplicate tab ToDup" }),
-        );
-
-        expect(patchSpy).toHaveBeenCalled();
-    });
-
-    it("duplicate creates a tab with a new ID (not same as source)", async () => {
-        const collection = makeCollection({
-            tabs: [makeTab({ id: "original-id", title: "Clone" })],
-        });
-        const root = makeRoot(collection);
-        await storage.patch((d) => {
-            d.groups = { ...root.groups };
-            d.collections = { ...root.collections };
-        });
-        render(<Workspace root={root} loading={false} />);
-
-        await userEvent.click(screen.getByRole("article"));
-        await userEvent.click(
-            screen.getByRole("button", { name: "Duplicate tab Clone" }),
-        );
-
-        // Read storage and verify two tabs, second has different ID
-        const updated = await storage.read();
-        const tabs = updated.collections["c1"]?.tabs ?? [];
-        expect(tabs).toHaveLength(2);
-        expect(tabs[0]!.id).not.toBe(tabs[1]!.id);
-        expect(tabs[1]!.url).toBe(tabs[0]!.url);
-    });
 });

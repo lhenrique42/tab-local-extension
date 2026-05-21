@@ -70,7 +70,7 @@ describe("TabList — drag handles", () => {
             <TabList
                 tabs={tabs}
                 onRemove={vi.fn()}
-                onDuplicate={vi.fn()}
+
                 onReorder={vi.fn()}
             />,
         );
@@ -83,14 +83,14 @@ describe("TabList — drag handles", () => {
     it("renders without crashing when onReorder is not provided", () => {
         const tabs: SavedTab[] = [makeTab({ title: "Solo" })];
         render(
-            <TabList tabs={tabs} onRemove={vi.fn()} onDuplicate={vi.fn()} />,
+            <TabList tabs={tabs} onRemove={vi.fn()} />,
         );
         expect(screen.getByText("Solo")).toBeInTheDocument();
     });
 
     it("renders an empty list without errors", () => {
         const { container } = render(
-            <TabList tabs={[]} onRemove={vi.fn()} onDuplicate={vi.fn()} />,
+            <TabList tabs={[]} onRemove={vi.fn()} />,
         );
         // No tab rows should be rendered
         expect(container.querySelectorAll(".tl-tab-row")).toHaveLength(0);
@@ -179,5 +179,58 @@ describe("collection reorder logic", () => {
             "c1",
             "c2",
         ]);
+    });
+});
+
+// ---------------------------------------------------------------
+// cross-group collection move logic
+// ---------------------------------------------------------------
+describe("cross-group collection move logic", () => {
+    it("inserts collection at over position in target group", () => {
+        const activeId = "c1";
+        const overId = "c3";
+        const toGroupIds = ["c2", "c3", "c4"];
+
+        const toIds = [...toGroupIds].filter((id) => id !== activeId);
+        const overIndex = toIds.indexOf(overId);
+        if (overIndex !== -1) toIds.splice(overIndex, 0, activeId);
+
+        expect(toIds).toEqual(["c2", "c1", "c3", "c4"]);
+    });
+
+    it("appends collection to empty target group", () => {
+        const activeId = "c1";
+        const toGroupIds: string[] = [];
+
+        const toIds = [...toGroupIds].filter((id) => id !== activeId);
+        const overIndex = toIds.indexOf("group-droppable-g2");
+        if (overIndex !== -1) {
+            toIds.splice(overIndex, 0, activeId);
+        } else {
+            toIds.push(activeId);
+        }
+
+        expect(toIds).toEqual(["c1"]);
+    });
+
+    it("removes moved collection from source group ids", () => {
+        const activeId = "c2";
+        const fromGroupIds = ["c1", "c2", "c3"];
+
+        const remaining = fromGroupIds.filter((id) => id !== activeId);
+        expect(remaining).toEqual(["c1", "c3"]);
+    });
+
+    it("does not duplicate collection when it already exists in target group", () => {
+        const activeId = "c1";
+        const toGroupIds = ["c1", "c2", "c3"]; // edge case: already there
+        const overId = "c2";
+
+        const toIds = [...toGroupIds].filter((id) => id !== activeId);
+        const overIndex = toIds.indexOf(overId);
+        if (overIndex !== -1) toIds.splice(overIndex, 0, activeId);
+
+        expect(toIds).toEqual(["c1", "c2", "c3"]);
+        expect(toIds.filter((id) => id === "c1")).toHaveLength(1);
     });
 });

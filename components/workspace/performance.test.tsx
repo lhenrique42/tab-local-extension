@@ -1,5 +1,18 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, waitFor, act } from "@testing-library/react";
+import {
+    describe,
+    it,
+    expect,
+    vi,
+    beforeEach,
+    afterEach,
+} from "vitest";
+import {
+    render,
+    screen,
+    waitFor,
+    act,
+    cleanup,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderHook } from "@testing-library/react";
 import { fakeBrowser } from "@webext-core/fake-browser";
@@ -40,14 +53,24 @@ vi.mock("@tanstack/react-virtual", () => ({
     },
 }));
 
-// Mock chrome messaging + tabs adapters used by Workspace and Popup
-const mockSendToBackground = vi.fn();
+// Use plain functions (not vi.fn()) in factories to avoid hoisting issues
+// where .mockReturnValue may not be applied at hoist time.
+const mockSendToBackground = vi.hoisted(() =>
+    vi.fn().mockResolvedValue({ ok: true }),
+);
 vi.mock("../../lib/messaging/client", () => ({
     sendToBackground: (...args: unknown[]) => mockSendToBackground(...args),
 }));
 vi.mock("../../lib/chrome/tabs", () => ({
-    createTab: vi.fn(),
-    getCurrentWindowTabs: vi.fn().mockResolvedValue([]),
+    createTab: () => Promise.resolve(),
+    getCurrentWindowTabs: () => Promise.resolve([]),
+}));
+vi.mock("../../lib/chrome/storage", () => ({
+    getStorageUsage: () =>
+        Promise.resolve({ usedBytes: 0, quotaBytes: 5 * 1024 * 1024 }),
+}));
+vi.mock("../../lib/hooks/useLiveTabs", () => ({
+    useLiveTabs: () => [],
 }));
 
 // Helpers
@@ -76,10 +99,12 @@ function makeTabs(count: number): SavedTab[] {
 beforeEach(async () => {
     await fakeBrowser.storage.local.clear();
     vi.stubGlobal("chrome", fakeBrowser);
-    mockSendToBackground.mockResolvedValue({ ok: true });
 });
 
 afterEach(() => {
+    // Unmount components before removing the chrome stub so cleanup
+    // effects (storage.onChanged.removeListener) can still access chrome.
+    cleanup();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
 });
@@ -171,21 +196,21 @@ describe("Quota warning banner", () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe("useStorage quota check", () => {
+    afterEach(() => {
+         
+        delete (chrome.storage.local as any).getBytesInUse;
+         
+        delete (chrome.storage.local as any).QUOTA_BYTES;
+    });
+
     it("exposes quotaWarning=true when bytesInUse exceeds 80% of QUOTA_BYTES", async () => {
-        vi.stubGlobal("chrome", {
-            ...fakeBrowser,
-            storage: {
-                ...fakeBrowser.storage,
-                local: {
-                    ...fakeBrowser.storage.local,
-                    QUOTA_BYTES: 5_242_880,
-                    getBytesInUse: vi.fn(
-                        (_keys: null, cb: (bytes: number) => void) =>
-                            cb(5_000_000),
-                    ),
-                },
-            },
-        });
+         
+        (chrome.storage.local as any).QUOTA_BYTES = 5_242_880;
+         
+        (chrome.storage.local as any).getBytesInUse = (
+            _keys: null,
+            cb: (bytes: number) => void,
+        ) => cb(5_000_000);
 
         const { result } = renderHook(() => useStorage());
         await waitFor(() => expect(result.current[1]).toBe(false));
@@ -193,20 +218,13 @@ describe("useStorage quota check", () => {
     });
 
     it("exposes quotaWarning=false when bytesInUse is below 80% of QUOTA_BYTES", async () => {
-        vi.stubGlobal("chrome", {
-            ...fakeBrowser,
-            storage: {
-                ...fakeBrowser.storage,
-                local: {
-                    ...fakeBrowser.storage.local,
-                    QUOTA_BYTES: 5_242_880,
-                    getBytesInUse: vi.fn(
-                        (_keys: null, cb: (bytes: number) => void) =>
-                            cb(100_000),
-                    ),
-                },
-            },
-        });
+         
+        (chrome.storage.local as any).QUOTA_BYTES = 5_242_880;
+         
+        (chrome.storage.local as any).getBytesInUse = (
+            _keys: null,
+            cb: (bytes: number) => void,
+        ) => cb(100_000);
 
         const { result } = renderHook(() => useStorage());
         await waitFor(() => expect(result.current[1]).toBe(false));

@@ -80,7 +80,6 @@ const noopGroupHandlers = {
     onDeleteCollection: vi.fn(),
     onAddTab: vi.fn(),
     onRemoveTab: vi.fn(),
-    onDuplicateTab: vi.fn(),
     onReorderCollections: vi.fn(),
     onReorderTabs: vi.fn(),
     onRestore: vi.fn().mockResolvedValue(undefined),
@@ -91,7 +90,6 @@ const noopCollectionHandlers = {
     onDelete: vi.fn(),
     onAddTab: vi.fn(),
     onRemoveTab: vi.fn(),
-    onDuplicateTab: vi.fn(),
     onReorderTabs: vi.fn(),
     onRestore: vi.fn().mockResolvedValue(undefined),
 };
@@ -135,7 +133,6 @@ describe("CollectionCard — inline rename", () => {
                 onDelete={vi.fn()}
                 onAddTab={vi.fn()}
                 onRemoveTab={vi.fn()}
-                onDuplicateTab={vi.fn()}
                 onReorderTabs={vi.fn()}
                 onRestore={vi.fn().mockResolvedValue(undefined)}
             />,
@@ -164,7 +161,6 @@ describe("CollectionCard — inline rename", () => {
                 onDelete={vi.fn()}
                 onAddTab={vi.fn()}
                 onRemoveTab={vi.fn()}
-                onDuplicateTab={vi.fn()}
                 onReorderTabs={vi.fn()}
                 onRestore={vi.fn().mockResolvedValue(undefined)}
             />,
@@ -194,7 +190,6 @@ describe("CollectionCard — inline rename", () => {
                 onDelete={vi.fn()}
                 onAddTab={vi.fn()}
                 onRemoveTab={vi.fn()}
-                onDuplicateTab={vi.fn()}
                 onReorderTabs={vi.fn()}
                 onRestore={vi.fn().mockResolvedValue(undefined)}
             />,
@@ -244,7 +239,6 @@ describe("CollectionCard — delete", () => {
                 onDelete={onDelete}
                 onAddTab={vi.fn()}
                 onRemoveTab={vi.fn()}
-                onDuplicateTab={vi.fn()}
                 onReorderTabs={vi.fn()}
                 onRestore={vi.fn().mockResolvedValue(undefined)}
             />,
@@ -268,7 +262,6 @@ describe("CollectionCard — delete", () => {
                 onDelete={onDelete}
                 onAddTab={vi.fn()}
                 onRemoveTab={vi.fn()}
-                onDuplicateTab={vi.fn()}
                 onReorderTabs={vi.fn()}
                 onRestore={vi.fn().mockResolvedValue(undefined)}
             />,
@@ -414,5 +407,51 @@ describe("Workspace — storage.patch mutations", () => {
         // Should call patch exactly once (atomic delete)
         const deleteCallCount = patchSpy.mock.calls.length;
         expect(deleteCallCount).toBe(1);
+    });
+});
+
+/* ------------------------------------------------------------------ */
+/*  CollectionCard — duplicate collection                               */
+/* ------------------------------------------------------------------ */
+
+describe("CollectionCard — duplicate collection", () => {
+    it("calls onDuplicate with collection id when Duplicate is clicked", async () => {
+        const onDuplicate = vi.fn();
+        const collection = makeCollection({ id: "c1", name: "Alpha" });
+        render(
+            <CollectionCard
+                collection={collection}
+                {...noopCollectionHandlers}
+                onDuplicate={onDuplicate}
+            />,
+        );
+
+        await userEvent.click(
+            screen.getByRole("button", { name: "Duplicate collection" }),
+        );
+        expect(onDuplicate).toHaveBeenCalledWith("c1");
+    });
+
+    it("patches storage and inserts copy after source", async () => {
+        const root = makeRoot();
+        await storage.patch((d) => {
+            d.groups = { ...root.groups };
+            d.collections = { ...root.collections };
+        });
+        const patchSpy = vi.spyOn(storage, "patch");
+        render(<Workspace root={root} loading={false} />);
+
+        await userEvent.click(
+            screen.getByRole("button", { name: "Duplicate collection" }),
+        );
+
+        expect(patchSpy).toHaveBeenCalled();
+        const updated = await storage.read();
+        const ids = updated.groups["g1"]?.collectionIds ?? [];
+        expect(ids).toHaveLength(2);
+        const copy = updated.collections[ids[1]!];
+        expect(copy?.name).toBe("My Collection (copy)");
+        expect(copy?.tabs).toHaveLength(1);
+        expect(copy?.id).not.toBe("c1");
     });
 });

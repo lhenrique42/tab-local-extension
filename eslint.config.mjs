@@ -52,16 +52,22 @@ export default [
             "react/prop-types": "off",
             "@typescript-eslint/no-unused-vars": [
                 "error",
-                { argsIgnorePattern: "^_" },
+                { argsIgnorePattern: "^_", caughtErrorsIgnorePattern: "^_" },
             ],
             "@typescript-eslint/explicit-function-return-type": "off",
             "@typescript-eslint/explicit-module-boundary-types": "off",
-            // Disallow raw console.log in source code
             "no-console": ["warn", { allow: ["error", "warn"] }],
         },
     },
     {
-        // Config and test files: Node globals, relaxed console rule
+        // Entrypoints and components: disallow all console output including console.log
+        files: ["entrypoints/**/*.{ts,tsx}", "components/**/*.{ts,tsx}"],
+        rules: {
+            "no-console": ["error", { allow: ["error", "warn"] }],
+        },
+    },
+    {
+        // Config and test files: Node globals, relaxed rules
         files: ["**/*.test.{ts,tsx}", "vitest.setup.ts", "*.config.{ts,mjs}"],
         languageOptions: {
             globals: {
@@ -71,6 +77,7 @@ export default [
         },
         rules: {
             "no-console": "off",
+            "@typescript-eslint/no-explicit-any": "off",
         },
     },
 ];

@@ -1,5 +1,5 @@
 import "./settings.css";
-import { type ReactNode, useRef, useState } from "react";
+import { type ChangeEvent, type ReactNode, useRef, useState } from "react";
 import { storage } from "../../lib/storage/adapter";
 import { useStorage } from "../../lib/hooks/useStorage";
 import type { UserSettings, StorageRoot } from "../../lib/storage/schema";
@@ -136,7 +136,7 @@ export function Settings() {
     };
 
     const handleFileSelected = async (
-        e: React.ChangeEvent<HTMLInputElement>,
+        e: ChangeEvent<HTMLInputElement>,
     ) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -144,7 +144,7 @@ export function Settings() {
             const rootData = await handleImportFile(file);
             setPendingRoot(rootData);
             setShowConfirm(true);
-        } catch (err) {
+        } catch (_err) {
             // Error handled by hook
         } finally {
             e.target.value = "";
@@ -157,7 +157,7 @@ export function Settings() {
             await chrome.storage.local.set({ __tablocal_root: pendingRoot });
             setSuccess("Data imported successfully!");
             setError(null);
-        } catch (err) {
+        } catch (_err) {
             setError("Failed to save imported data");
             setSuccess(null);
         } finally {
@@ -196,10 +196,10 @@ export function Settings() {
     return (
         <div className="tl-settings" role="main" aria-label="TabLocal Settings">
             {/* Header */}
-            <header className="tl-settings__header">
+            <div className="tl-settings__header">
                 <h1 className="tl-settings__title">Settings</h1>
                 <span className="tl-settings__eyebrow">TabLocal</span>
-            </header>
+            </div>
 
             {loading ? (
                 <div

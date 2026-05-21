@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import React from "react";
 import { Settings } from "./Settings";
 import { defaultRoot } from "../../lib/storage/defaults";
 import type { StorageRoot } from "../../lib/storage/schema";
@@ -16,10 +15,20 @@ vi.mock("../../lib/hooks/useStorage", () => ({
                 name: "My Group",
                 color: "blue",
                 collectionIds: ["col-1"],
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
             },
         };
         root.collections = {
-            "col-1": { id: "col-1", name: "My Collection", tabIds: [] },
+            "col-1": {
+                id: "col-1",
+                name: "My Collection",
+                groupId: "group-1",
+                chromeGroupColor: null,
+                tabs: [],
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
+            },
         };
         root.settings.defaultRestoreMode = "active-all";
         return [root, false];
@@ -77,13 +86,19 @@ describe("Settings E2E Integration - Data Portability", () => {
                 name: "E2E Group",
                 color: "tg-blue",
                 collectionIds: ["col-1"],
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
             },
         };
         seedRoot.collections = {
             "col-1": {
                 id: "col-1",
                 name: "E2E Collection",
-                tabIds: ["tab-1"],
+                groupId: "group-1",
+                chromeGroupColor: null,
+                tabs: [],
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
             },
         };
         seedRoot.settings.defaultRestoreMode = "active-all";

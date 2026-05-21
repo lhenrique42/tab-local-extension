@@ -3,3 +3,5 @@ allowBuilds:
   spawn-sync: true
 minimumReleaseAgeExclude:
   - '@webext-core/fake-browser@1.4.1'
+overrides:
+  '@vitejs/plugin-react': '4.7.0'
