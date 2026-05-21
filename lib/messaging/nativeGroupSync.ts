@@ -14,43 +14,43 @@ import type { ChromeGroupColor } from "../storage/schema";
  *          the listener was not registered.
  */
 export function registerNativeGroupSyncListener(
-  storageAdapter: StorageAdapter,
+    storageAdapter: StorageAdapter,
 ): (() => void) | undefined {
-  if (typeof chrome?.tabGroups === "undefined") {
-    return undefined;
-  }
-
-  async function onTabGroupUpdated(
-    group: chrome.tabGroups.TabGroup,
-  ): Promise<void> {
-    try {
-      const root = await storageAdapter.read();
-      if (!root.settings.nativeGroupSyncEnabled) return;
-
-      const collectionsToUpdate = Object.values(root.collections).filter(
-        (c) => c.chromeGroupId === group.id,
-      );
-
-      if (collectionsToUpdate.length === 0) return;
-
-      await storageAdapter.patch((draft) => {
-        for (const col of Object.values(draft.collections)) {
-          if (col.chromeGroupId !== group.id) continue;
-          col.chromeGroupColor = group.color as ChromeGroupColor;
-          if (group.title) {
-            col.name = group.title;
-          }
-          col.updatedAt = Date.now();
-        }
-      });
-    } catch (err) {
-      console.error("[nativeGroupSync] onTabGroupUpdated failed:", err);
+    if (typeof chrome?.tabGroups === "undefined") {
+        return undefined;
     }
-  }
 
-  chrome.tabGroups.onUpdated.addListener(onTabGroupUpdated);
+    async function onTabGroupUpdated(
+        group: chrome.tabGroups.TabGroup,
+    ): Promise<void> {
+        try {
+            const root = await storageAdapter.read();
+            if (!root.settings.nativeGroupSyncEnabled) return;
 
-  return () => {
-    chrome.tabGroups.onUpdated.removeListener(onTabGroupUpdated);
-  };
+            const collectionsToUpdate = Object.values(root.collections).filter(
+                (c) => c.chromeGroupId === group.id,
+            );
+
+            if (collectionsToUpdate.length === 0) return;
+
+            await storageAdapter.patch((draft) => {
+                for (const col of Object.values(draft.collections)) {
+                    if (col.chromeGroupId !== group.id) continue;
+                    col.chromeGroupColor = group.color as ChromeGroupColor;
+                    if (group.title) {
+                        col.name = group.title;
+                    }
+                    col.updatedAt = Date.now();
+                }
+            });
+        } catch (err) {
+            console.error("[nativeGroupSync] onTabGroupUpdated failed:", err);
+        }
+    }
+
+    chrome.tabGroups.onUpdated.addListener(onTabGroupUpdated);
+
+    return () => {
+        chrome.tabGroups.onUpdated.removeListener(onTabGroupUpdated);
+    };
 }

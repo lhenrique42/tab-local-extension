@@ -20,6 +20,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@fontsource/geist": "^5.0.3",
     "@fontsource/geist-mono": "^5.0.3",
+    "@tanstack/react-virtual": "^3.13.24",
     "lucide-react": "^0.468.0",
     "nanoid": "^5.0.9",
     "react": "^19.0.0",

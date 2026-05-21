@@ -7,34 +7,34 @@ import type { TabInfo } from "../chrome/tabs";
  * Re-queries whenever chrome.tabs events fire (created, removed, updated).
  */
 export function useLiveTabs(): TabInfo[] {
-  const [tabs, setTabs] = useState<TabInfo[]>([]);
+    const [tabs, setTabs] = useState<TabInfo[]>([]);
 
-  useEffect(() => {
-    let cancelled = false;
+    useEffect(() => {
+        let cancelled = false;
 
-    const refresh = () => {
-      void getCurrentWindowTabs().then((result) => {
-        if (!cancelled) setTabs(result);
-      });
-    };
+        const refresh = () => {
+            void getCurrentWindowTabs().then((result) => {
+                if (!cancelled) setTabs(result);
+            });
+        };
 
-    // Initial load
-    refresh();
+        // Initial load
+        refresh();
 
-    // Attach Chrome tabs event listeners
-    chrome.tabs.onCreated.addListener(refresh);
-    chrome.tabs.onRemoved.addListener(refresh);
-    chrome.tabs.onUpdated.addListener(refresh);
-    chrome.tabs.onActivated.addListener(refresh);
+        // Attach Chrome tabs event listeners
+        chrome.tabs.onCreated.addListener(refresh);
+        chrome.tabs.onRemoved.addListener(refresh);
+        chrome.tabs.onUpdated.addListener(refresh);
+        chrome.tabs.onActivated.addListener(refresh);
 
-    return () => {
-      cancelled = true;
-      chrome.tabs.onCreated.removeListener(refresh);
-      chrome.tabs.onRemoved.removeListener(refresh);
-      chrome.tabs.onUpdated.removeListener(refresh);
-      chrome.tabs.onActivated.removeListener(refresh);
-    };
-  }, []);
+        return () => {
+            cancelled = true;
+            chrome.tabs.onCreated.removeListener(refresh);
+            chrome.tabs.onRemoved.removeListener(refresh);
+            chrome.tabs.onUpdated.removeListener(refresh);
+            chrome.tabs.onActivated.removeListener(refresh);
+        };
+    }, []);
 
-  return tabs;
+    return tabs;
 }

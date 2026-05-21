@@ -1,9 +1,11 @@
-import { useTheme } from '../../composables/useTheme';
-import { useStorage } from '../../lib/hooks/useStorage';
-import { Workspace } from '../../components/workspace';
+import { useTheme } from "../../composables/useTheme";
+import { useStorage } from "../../lib/hooks/useStorage";
+import { Workspace } from "../../components/workspace";
 
 export default function App() {
-  useTheme();
-  const [root, loading] = useStorage();
-  return <Workspace root={root} loading={loading} />;
+    useTheme();
+    const [root, loading, quotaWarning] = useStorage();
+    return (
+        <Workspace root={root} loading={loading} quotaWarning={quotaWarning} />
+    );
 }
