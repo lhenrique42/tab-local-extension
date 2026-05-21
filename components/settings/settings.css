@@ -190,3 +190,23 @@
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
+
+/* Import/Export styling */
+.tl-settings__error {
+  color: var(--status-danger);
+  font-size: var(--text-sm);
+  margin-top: var(--space-2);
+}
+
+.tl-settings__success {
+  color: var(--status-success);
+  font-size: var(--text-sm);
+  margin-top: var(--space-2);
+}
+
+.tl-settings__import-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+

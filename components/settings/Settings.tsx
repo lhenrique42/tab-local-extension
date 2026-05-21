@@ -1,8 +1,10 @@
 import "./settings.css";
-import type { ReactNode } from "react";
+import { type ReactNode, useRef, useState } from "react";
 import { storage } from "../../lib/storage/adapter";
 import { useStorage } from "../../lib/hooks/useStorage";
-import type { UserSettings } from "../../lib/storage/schema";
+import type { UserSettings, StorageRoot } from "../../lib/storage/schema";
+import { useImportExport } from "../../composables/useImportExport";
+import { Button, ConfirmDialog } from "../shared";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                               */
@@ -114,6 +116,57 @@ export function Settings() {
   const [root, loading] = useStorage();
   const settings = root.settings;
 
+  const {
+    error,
+    setError,
+    success,
+    setSuccess,
+    handleExport,
+    handleImportFile,
+  } = useImportExport();
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [pendingRoot, setPendingRoot] = useState<StorageRoot | null>(null);
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const rootData = await handleImportFile(file);
+      setPendingRoot(rootData);
+      setShowConfirm(true);
+    } catch (err) {
+      // Error handled by hook
+    } finally {
+      e.target.value = "";
+    }
+  };
+
+  const handleConfirmImport = async () => {
+    if (!pendingRoot) return;
+    try {
+      await chrome.storage.local.set({ __tablocal_root: pendingRoot });
+      setSuccess("Data imported successfully!");
+      setError(null);
+    } catch (err) {
+      setError("Failed to save imported data");
+      setSuccess(null);
+    } finally {
+      setShowConfirm(false);
+      setPendingRoot(null);
+    }
+  };
+
+  const handleCancelImport = () => {
+    setShowConfirm(false);
+    setPendingRoot(null);
+  };
+
   async function patchSettings(fn: (s: UserSettings) => void) {
     await storage.patch((draft) => fn(draft.settings));
   }
@@ -202,7 +255,61 @@ export function Settings() {
               />
             </Row>
           </Section>
+
+          {/* Export Data */}
+          <Section label="Export Data">
+            <Row
+              name="Export all data"
+              description="Download all your groups, collections, and settings as a JSON file."
+            >
+              <Button variant="secondary" onClick={handleExport}>
+                Export
+              </Button>
+            </Row>
+          </Section>
+
+          {/* Import Data */}
+          <Section label="Import Data">
+            <Row
+              name="Import from file"
+              description="Upload a previously exported JSON file. This will replace all your current data."
+            >
+              <div className="tl-settings__import-controls">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".json"
+                  onChange={handleFileSelected}
+                  style={{ display: "none" }}
+                  data-testid="import-file-input"
+                />
+                <Button variant="secondary" onClick={handleImportClick}>
+                  Import File
+                </Button>
+              </div>
+            </Row>
+            {error && (
+              <div className="tl-settings__error" role="alert">
+                {error}
+              </div>
+            )}
+            {success && (
+              <div className="tl-settings__success" role="status" aria-live="polite">
+                {success}
+              </div>
+            )}
+          </Section>
         </div>
+      )}
+
+      {showConfirm && (
+        <ConfirmDialog
+          title="Confirm Import"
+          message="This will replace all your current data. Continue?"
+          confirmLabel="Import"
+          onConfirm={handleConfirmImport}
+          onCancel={handleCancelImport}
+        />
       )}
     </div>
   );
