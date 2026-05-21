@@ -952,3 +952,172 @@ describe("handleAutoGroupWindow", () => {
         expect(result).toEqual({ ok: false, error: "API error" });
     });
 });
+
+// ──────────────────────────────────────────────
+// Close tabs after saving
+// ──────────────────────────────────────────────
+
+describe("handleSaveWindow — closeTabsAfterSaving", () => {
+    it("calls chrome.tabs.remove with http tab IDs when setting is enabled", async () => {
+        vi.spyOn(fakeBrowser.tabs, "query").mockResolvedValue([
+            { id: 10, url: "https://example.com", title: "A", favIconUrl: null, windowId: 1 } as unknown as chrome.tabs.Tab,
+            { id: 11, url: "https://github.com", title: "B", favIconUrl: null, windowId: 1 } as unknown as chrome.tabs.Tab,
+        ]);
+        const removeSpy = vi.spyOn(fakeBrowser.tabs, "remove").mockResolvedValue(undefined);
+
+        const adapter = makeStorage();
+        const root = defaultRoot();
+        root.settings.closeTabsAfterSaving = true;
+        await fakeBrowser.storage.local.set({ __tablocal_root: root });
+
+        await handleSaveWindow(
+            { type: "SAVE_WINDOW", payload: { collectionName: "Close Test" } },
+            dummySender,
+            adapter,
+        );
+
+        expect(removeSpy).toHaveBeenCalledOnce();
+        expect(removeSpy).toHaveBeenCalledWith([10, 11]);
+    });
+
+    it("does not call chrome.tabs.remove when setting is disabled", async () => {
+        vi.spyOn(fakeBrowser.tabs, "query").mockResolvedValue([
+            { id: 10, url: "https://example.com", title: "A", favIconUrl: null, windowId: 1 } as unknown as chrome.tabs.Tab,
+        ]);
+        const removeSpy = vi.spyOn(fakeBrowser.tabs, "remove").mockResolvedValue(undefined);
+
+        const adapter = makeStorage();
+        await handleSaveWindow(
+            { type: "SAVE_WINDOW", payload: { collectionName: "Keep Open" } },
+            dummySender,
+            adapter,
+        );
+
+        expect(removeSpy).not.toHaveBeenCalled();
+    });
+
+    it("does not close non-http tabs (chrome://, about:)", async () => {
+        vi.spyOn(fakeBrowser.tabs, "query").mockResolvedValue([
+            { id: 10, url: "https://example.com", title: "A", favIconUrl: null, windowId: 1 } as unknown as chrome.tabs.Tab,
+            { id: 11, url: "chrome://newtab/", title: "New Tab", favIconUrl: null, windowId: 1 } as unknown as chrome.tabs.Tab,
+        ]);
+        const removeSpy = vi.spyOn(fakeBrowser.tabs, "remove").mockResolvedValue(undefined);
+
+        const adapter = makeStorage();
+        const root = defaultRoot();
+        root.settings.closeTabsAfterSaving = true;
+        await fakeBrowser.storage.local.set({ __tablocal_root: root });
+
+        await handleSaveWindow(
+            { type: "SAVE_WINDOW", payload: { collectionName: "Partial Close" } },
+            dummySender,
+            adapter,
+        );
+
+        // Only the http tab id should be removed
+        expect(removeSpy).toHaveBeenCalledWith([10]);
+    });
+});
+
+// ──────────────────────────────────────────────
+// Restore Chrome tab group
+// ──────────────────────────────────────────────
+
+describe("handleRestoreCollection — chrome tab group recreation", () => {
+    function seedCollectionWithColor(
+        chromeGroupColor: string | null,
+        name = "Design Sprint",
+    ) {
+        const root = defaultRoot();
+        root.collections["col1"] = {
+            id: "col1",
+            name,
+            groupId: null,
+            chromeGroupColor: chromeGroupColor as any,
+            tabs: [
+                { id: "t1", url: "https://a.com", title: "A", faviconUrl: null, addedAt: 1000 },
+                { id: "t2", url: "https://b.com", title: "B", faviconUrl: null, addedAt: 1000 },
+            ],
+            createdAt: 1000,
+            updatedAt: 1000,
+        };
+        return fakeBrowser.storage.local.set({ __tablocal_root: root });
+    }
+
+    it("groups restored tabs and sets color when chromeGroupColor is set", async () => {
+        const groupSpy = vi.fn().mockResolvedValue(77);
+        const updateSpy = vi.fn().mockResolvedValue(undefined);
+        vi.stubGlobal("chrome", {
+            ...fakeBrowser,
+            tabs: {
+                ...fakeBrowser.tabs,
+                create: vi.fn().mockResolvedValue({ id: 1, windowId: 5 }),
+                group: groupSpy,
+            },
+            tabGroups: { update: updateSpy },
+        });
+
+        const adapter = makeStorage();
+        await seedCollectionWithColor("blue");
+
+        await handleRestoreCollection(
+            { type: "RESTORE_COLLECTION", payload: { collectionId: "col1", newWindow: false } },
+            dummySender,
+            adapter,
+        );
+
+        expect(groupSpy).toHaveBeenCalledOnce();
+        expect(updateSpy).toHaveBeenCalledWith(77, {
+            color: "blue",
+            title: "Design Sprint",
+        });
+    });
+
+    it("does not create a tab group when chromeGroupColor is null", async () => {
+        const groupSpy = vi.fn().mockResolvedValue(99);
+        vi.stubGlobal("chrome", {
+            ...fakeBrowser,
+            tabs: {
+                ...fakeBrowser.tabs,
+                create: vi.fn().mockResolvedValue({ id: 1, windowId: 5 }),
+                group: groupSpy,
+            },
+            tabGroups: { update: vi.fn() },
+        });
+
+        const adapter = makeStorage();
+        await seedCollectionWithColor(null);
+
+        await handleRestoreCollection(
+            { type: "RESTORE_COLLECTION", payload: { collectionId: "col1", newWindow: false } },
+            dummySender,
+            adapter,
+        );
+
+        expect(groupSpy).not.toHaveBeenCalled();
+    });
+
+    it("does not create a tab group when chrome.tabGroups API is unavailable", async () => {
+        const groupSpy = vi.fn().mockResolvedValue(99);
+        vi.stubGlobal("chrome", {
+            ...fakeBrowser,
+            tabs: {
+                ...fakeBrowser.tabs,
+                create: vi.fn().mockResolvedValue({ id: 1, windowId: 5 }),
+                group: groupSpy,
+            },
+            tabGroups: undefined,
+        });
+
+        const adapter = makeStorage();
+        await seedCollectionWithColor("red");
+
+        await handleRestoreCollection(
+            { type: "RESTORE_COLLECTION", payload: { collectionId: "col1", newWindow: false } },
+            dummySender,
+            adapter,
+        );
+
+        expect(groupSpy).not.toHaveBeenCalled();
+    });
+});

@@ -22,6 +22,7 @@ export function defaultRoot(): StorageRoot {
             defaultRestoreMode: "active-all",
             autoGroupByDomainEnabled: true,
             nativeGroupSyncEnabled: true,
+            closeTabsAfterSaving: false,
         },
         groupOrder: [SESSIONS_GROUP_ID],
     };

@@ -43,6 +43,7 @@ export interface UserSettings {
     defaultRestoreMode: "discard-background" | "active-all";
     autoGroupByDomainEnabled: boolean;
     nativeGroupSyncEnabled: boolean;
+    closeTabsAfterSaving: boolean;
 }
 
 export interface StorageRoot {

@@ -193,6 +193,12 @@ export function Settings() {
         });
     }
 
+    function handleCloseAfterSaveToggle(checked: boolean) {
+        void patchSettings((s) => {
+            s.closeTabsAfterSaving = checked;
+        });
+    }
+
     return (
         <div className="tl-settings" role="main" aria-label="TabLocal Settings">
             {/* Header */}
@@ -259,6 +265,17 @@ export function Settings() {
                                 checked={settings.autoGroupByDomainEnabled}
                                 label="Auto-group tabs by domain"
                                 onChange={handleAutoGroupToggle}
+                            />
+                        </Row>
+                        <Row
+                            name="Close tabs after saving"
+                            description="Automatically close the saved tabs after a session is saved."
+                        >
+                            <Toggle
+                                id="toggle-close-after-save"
+                                checked={settings.closeTabsAfterSaving}
+                                label="Close tabs after saving"
+                                onChange={handleCloseAfterSaveToggle}
                             />
                         </Row>
                     </Section>

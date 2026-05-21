@@ -3,7 +3,7 @@ import type { StorageAdapter } from "../storage/adapter";
 import type { SavedTab, ChromeGroupColor } from "../storage/schema";
 import type { BackgroundMessage, BackgroundResponse } from "./types";
 import { SESSIONS_GROUP_ID } from "../storage/defaults";
-import { getCurrentWindowTabs, createTab, createWindow } from "../chrome/tabs";
+import { getCurrentWindowTabs, createTab, createWindow, groupTabs } from "../chrome/tabs";
 import { queryTabGroups } from "../chrome/tabGroups";
 
 const HTTP_PATTERN = /^https?:\/\//;
@@ -18,6 +18,7 @@ export const handleSaveWindow: MessageHandler<
     Extract<BackgroundMessage, { type: "SAVE_WINDOW" }>
 > = async (msg, _sender, storageAdapter) => {
     try {
+        const root = await storageAdapter.read();
         const rawTabs = await getCurrentWindowTabs();
         const httpTabs = rawTabs.filter((t) => HTTP_PATTERN.test(t.url));
         const now = Date.now();
@@ -87,6 +88,15 @@ export const handleSaveWindow: MessageHandler<
                 }
             });
 
+            if (root.settings.closeTabsAfterSaving) {
+                const tabIdsToClose = httpTabs
+                    .map((t) => t.id)
+                    .filter((id): id is number => id != null);
+                if (tabIdsToClose.length > 0) {
+                    await chrome.tabs.remove(tabIdsToClose);
+                }
+            }
+
             return {
                 ok: true,
                 data: { collectionIds, tabCount: httpTabs.length },
@@ -126,6 +136,15 @@ export const handleSaveWindow: MessageHandler<
             draft.groups[SESSIONS_GROUP_ID].collectionIds.unshift(collectionId);
         });
 
+        if (root.settings.closeTabsAfterSaving) {
+            const tabIdsToClose = httpTabs
+                .map((t) => t.id)
+                .filter((id): id is number => id != null);
+            if (tabIdsToClose.length > 0) {
+                await chrome.tabs.remove(tabIdsToClose);
+            }
+        }
+
         return { ok: true, data: { collectionId, tabCount: savedTabs.length } };
     } catch (err) {
         return {
@@ -158,20 +177,21 @@ export const handleRestoreCollection: MessageHandler<
         }
 
         const createdTabIds: number[] = [];
+        let targetWindowId: number | undefined;
 
         if (msg.payload.newWindow) {
             // Open first tab in a new window (active by default)
             const win = await createWindow(tabs[0].url);
-            const windowId = win?.id;
+            targetWindowId = win?.id;
             const firstTab = win?.tabs?.[0];
             if (firstTab?.id != null) createdTabIds.push(firstTab.id);
 
             // Open remaining tabs in that window as inactive (background)
             for (const tab of tabs.slice(1)) {
-                const created = windowId
+                const created = targetWindowId
                     ? await chrome.tabs.create({
                           url: tab.url,
-                          windowId,
+                          windowId: targetWindowId,
                           active: false,
                       })
                     : await createTab(tab.url, false);
@@ -182,7 +202,10 @@ export const handleRestoreCollection: MessageHandler<
         } else {
             // Open first tab as active in current window
             const firstCreated = await createTab(tabs[0].url, true);
-            if (firstCreated?.id != null) createdTabIds.push(firstCreated.id);
+            if (firstCreated?.id != null) {
+                createdTabIds.push(firstCreated.id);
+                targetWindowId = firstCreated.windowId;
+            }
 
             // Open remaining as inactive background tabs
             for (const tab of tabs.slice(1)) {
@@ -190,6 +213,20 @@ export const handleRestoreCollection: MessageHandler<
                 if (created?.id != null) {
                     createdTabIds.push(created.id);
                 }
+            }
+        }
+
+        // Recreate Chrome tab group if the collection originated from one
+        const hasGroupsApi =
+            typeof chrome !== "undefined" &&
+            typeof chrome.tabGroups !== "undefined";
+        if (collection.chromeGroupColor && hasGroupsApi && createdTabIds.length > 0) {
+            const newGroupId = await groupTabs(createdTabIds);
+            if (newGroupId != null) {
+                await chrome.tabGroups.update(newGroupId, {
+                    color: collection.chromeGroupColor as any,
+                    title: collection.name,
+                });
             }
         }
 
