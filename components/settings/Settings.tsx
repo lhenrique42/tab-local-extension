@@ -4,7 +4,7 @@ import { storage } from "../../lib/storage/adapter";
 import { useStorage } from "../../lib/hooks/useStorage";
 import type { UserSettings, StorageRoot } from "../../lib/storage/schema";
 import { useImportExport } from "../../composables/useImportExport";
-import { Button, ConfirmDialog } from "../shared";
+import { Button, ConfirmDialog, Icon } from "../shared";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                               */
@@ -329,6 +329,25 @@ export function Settings() {
                                 {success}
                             </div>
                         )}
+                    </Section>
+
+                    {/* About */}
+                    <Section label="About">
+                        <Row
+                            name="Open source"
+                            description="TabLocal is free and open source. Star the repo, report issues, or contribute on GitHub."
+                        >
+                            <a
+                                href="https://github.com/lhenrique42/tab-local-extension"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="tl-btn tl-btn-secondary tl-settings__github-link"
+                            >
+                                <Icon name="github" size={14} aria-hidden />
+                                GitHub
+                                <Icon name="external" size={12} aria-hidden />
+                            </a>
+                        </Row>
                     </Section>
                 </div>
             )}

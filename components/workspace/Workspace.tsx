@@ -24,12 +24,12 @@ import {
     DragOverlay,
     KeyboardSensor,
     PointerSensor,
-    closestCenter,
     pointerWithin,
     useSensor,
     useSensors,
     type DragEndEvent,
     type DragOverEvent,
+    type DragStartEvent,
 } from "@dnd-kit/core";
 import {
     SortableContext,
@@ -57,6 +57,7 @@ function SortableGroupWrapper({ id, children }: SortableGroupWrapperProps) {
         useSortable({
             id,
             disabled: isFixed,
+            data: { type: "group" },
         });
     const style: CSSProperties = {
         transform: CSS.Transform.toString(transform),
@@ -97,14 +98,7 @@ export function Workspace({ root, loading, quotaWarning }: WorkspaceProps) {
     const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
     const [overGroupId, setOverGroupId] = useState<string | null>(null);
 
-    const groupDndSensors = useSensors(
-        useSensor(PointerSensor),
-        useSensor(KeyboardSensor, {
-            coordinateGetter: sortableKeyboardCoordinates,
-        }),
-    );
-
-    const collectionDndSensors = useSensors(
+    const dndSensors = useSensors(
         useSensor(PointerSensor),
         useSensor(KeyboardSensor, {
             coordinateGetter: sortableKeyboardCoordinates,
@@ -404,6 +398,64 @@ export function Workspace({ root, loading, quotaWarning }: WorkspaceProps) {
         });
     }
 
+    /* ---- Unified drag handlers ---- */
+
+    function handleDragStart(event: DragStartEvent) {
+        const type = event.active.data.current?.type;
+        if (type === "group") {
+            setActiveGroupId(String(event.active.id));
+        } else {
+            setActiveCollectionId(String(event.active.id));
+        }
+    }
+
+    function handleDragOver(event: DragOverEvent) {
+        // Only track over-group for collection drags (cross-group move highlight)
+        const type = event.active.data.current?.type;
+        if (type === "group") return;
+        const { over } = event;
+        const containerId =
+            (over?.data.current?.sortable?.containerId as string | undefined) ??
+            (over?.data.current?.type === "group-droppable"
+                ? (over.data.current.groupId as string)
+                : undefined);
+        setOverGroupId(containerId ?? null);
+    }
+
+    function handleDragEnd(event: DragEndEvent) {
+        const type = event.active.data.current?.type;
+        if (type === "group") {
+            handleGroupDragEnd(event);
+        } else {
+            handleCollectionDragEnd(event);
+        }
+    }
+
+    function handleDragCancel() {
+        setActiveGroupId(null);
+        setActiveCollectionId(null);
+        setOverGroupId(null);
+    }
+
+    function handleGroupDragEnd(event: DragEndEvent) {
+        setActiveGroupId(null);
+        const { active, over } = event;
+        if (!over || active.id === over.id) return;
+        const currentOrder = root.groupOrder ?? orderedGroupIds;
+        const oldIdx = currentOrder.findIndex(
+            (id) => id === String(active.id),
+        );
+        const newIdx = currentOrder.findIndex(
+            (id) => id === String(over.id),
+        );
+        if (oldIdx === -1 || newIdx === -1) return;
+        const moved = arrayMove([...currentOrder], oldIdx, newIdx);
+        handleReorderGroups([
+            SESSIONS_GROUP_ID,
+            ...moved.filter((id) => id !== SESSIONS_GROUP_ID),
+        ]);
+    }
+
     function handleCollectionDragEnd(event: DragEndEvent) {
         setActiveCollectionId(null);
         setOverGroupId(null);
@@ -449,16 +501,6 @@ export function Workspace({ root, loading, quotaWarning }: WorkspaceProps) {
                 toIds,
             );
         }
-    }
-
-    function handleCollectionDragOver(event: DragOverEvent) {
-        const { over } = event;
-        const containerId =
-            (over?.data.current?.sortable?.containerId as string | undefined) ??
-            (over?.data.current?.type === "group-droppable"
-                ? (over.data.current.groupId as string)
-                : undefined);
-        setOverGroupId(containerId ?? null);
     }
 
     async function handleRestore(collectionId: string) {
@@ -599,54 +641,17 @@ export function Workspace({ root, loading, quotaWarning }: WorkspaceProps) {
                     </div>
                 ) : (
                     <DndContext
-                        sensors={groupDndSensors}
-                        collisionDetection={closestCenter}
-                        onDragStart={(e) =>
-                            setActiveGroupId(String(e.active.id))
-                        }
-                        onDragEnd={(event: DragEndEvent) => {
-                            setActiveGroupId(null);
-                            const { active, over } = event;
-                            if (!over || active.id === over.id) return;
-                            const currentOrder =
-                                root.groupOrder ?? orderedGroupIds;
-                            const oldIdx = currentOrder.findIndex(
-                                (id) => id === String(active.id),
-                            );
-                            const newIdx = currentOrder.findIndex(
-                                (id) => id === String(over.id),
-                            );
-                            if (oldIdx === -1 || newIdx === -1) return;
-                            const moved = arrayMove(
-                                [...currentOrder],
-                                oldIdx,
-                                newIdx,
-                            );
-                            handleReorderGroups([
-                                SESSIONS_GROUP_ID,
-                                ...moved.filter(
-                                    (id) => id !== SESSIONS_GROUP_ID,
-                                ),
-                            ]);
-                        }}
+                        sensors={dndSensors}
+                        collisionDetection={pointerWithin}
+                        onDragStart={handleDragStart}
+                        onDragOver={handleDragOver}
+                        onDragEnd={handleDragEnd}
+                        onDragCancel={handleDragCancel}
                     >
                         <SortableContext
                             items={orderedGroupIds}
                             strategy={verticalListSortingStrategy}
                         >
-                            <DndContext
-                                sensors={collectionDndSensors}
-                                collisionDetection={pointerWithin}
-                                onDragStart={(e) =>
-                                    setActiveCollectionId(String(e.active.id))
-                                }
-                                onDragOver={handleCollectionDragOver}
-                                onDragEnd={handleCollectionDragEnd}
-                                onDragCancel={() => {
-                                    setActiveCollectionId(null);
-                                    setOverGroupId(null);
-                                }}
-                            >
                                 <div className="tl-groups">
                                     {visibleGroups.map((group) => {
                                         const collections = group.collectionIds
@@ -712,24 +717,6 @@ export function Workspace({ root, loading, quotaWarning }: WorkspaceProps) {
                                         );
                                     })}
                                 </div>
-                                <DragOverlay>
-                                    {activeCollectionId
-                                        ? (() => {
-                                              const col =
-                                                  root.collections[
-                                                      activeCollectionId
-                                                  ];
-                                              return col ? (
-                                                  <div className="tl-drag-overlay-card">
-                                                      <span className="tl-collection-title">
-                                                          {col.name}
-                                                      </span>
-                                                  </div>
-                                              ) : null;
-                                          })()
-                                        : null}
-                                </DragOverlay>
-                            </DndContext>
                         </SortableContext>
                         <DragOverlay>
                             {activeGroupId
@@ -739,6 +726,20 @@ export function Workspace({ root, loading, quotaWarning }: WorkspaceProps) {
                                           <div className="tl-drag-overlay-card">
                                               <span className="tl-group-name">
                                                   {g.name}
+                                              </span>
+                                          </div>
+                                      ) : null;
+                                  })()
+                                : activeCollectionId
+                                ? (() => {
+                                      const col =
+                                          root.collections[
+                                              activeCollectionId
+                                          ];
+                                      return col ? (
+                                          <div className="tl-drag-overlay-card">
+                                              <span className="tl-collection-title">
+                                                  {col.name}
                                               </span>
                                           </div>
                                       ) : null;

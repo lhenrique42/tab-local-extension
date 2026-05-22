@@ -6,7 +6,7 @@ export default defineConfig({
         name: "TabLocal",
         description:
             "On-device tab manager. Save, organise, and restore your browser sessions.",
-        version: "1.0.0",
+        version: "1.0.1",
         icons: {
             16: "icons/16.png",
             32: "icons/32.png",
@@ -19,6 +19,12 @@ export default defineConfig({
             "storage",
             "favicon",
             "unlimitedStorage",
+        ],
+        web_accessible_resources: [
+            {
+                resources: ["_favicon/*"],
+                matches: ["chrome://newtab/*"],
+            },
         ],
         commands: {
             "save-window": {

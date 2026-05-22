@@ -21,6 +21,7 @@ import {
     Download,
     ChevronDown,
     ChevronRight,
+    Github,
     type LucideProps,
 } from "lucide-react";
 import type { FC } from "react";
@@ -49,6 +50,7 @@ const ICON_MAP = {
     download: Download,
     "chevron-down": ChevronDown,
     "chevron-right": ChevronRight,
+    github: Github,
 } as const satisfies Record<string, FC<LucideProps>>;
 
 export type IconName = keyof typeof ICON_MAP;
