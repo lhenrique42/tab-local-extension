@@ -2,6 +2,9 @@
 
 A privacy-first Chrome extension that replaces the New Tab page with a visual workspace for saving, organizing, and restoring browser sessions — all stored locally on your device, no account required.
 
+- [Site](https://localtab.dev/)
+- [Chrome Extension Store page](https://chromewebstore.google.com/detail/tablocal/amckeigglhajcmcmdmijlcijplkpoecl)
+
 ---
 
 ## Features
@@ -113,7 +116,7 @@ All data is stored in `chrome.storage.local`. Nothing leaves the device. No netw
 
 ## License
 
-This project is licensed under the **MIT License** – see the `LICENSE` file for details.
+This project is licensed under the **MIT License** – see the [`LICENSE`](LICENSE) file for details.
 
 ## Support
 
